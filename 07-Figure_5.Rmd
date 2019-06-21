@@ -1,0 +1,276 @@
+---
+title: "Figure 5"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Figure 5
+
+## Panel A - In vitro ATAC-seq
+```{r}
+(df<-plotPCA(normTransform(atac_dds),intgroup=c("group"),returnData=T,ntop=500))
+
+plotPCA(normTransform(atac_dds),intgroup=c("group"),ntop=500) + theme_bw() +
+  scale_color_manual(values = cbPalette) + geom_text(x=df$PC1,y=df$PC2,label=df$group) 
+```
+
+## Panel 5D - Heatmap
+
+
+```{r}
+
+
+strip_mcols<-function(gr) {mcols(gr)<-NULL; return(gr)}
+length(vitro_atac_combine_reduce<-reduce(c(strip_mcols(vitro_atac_sox9_reduce),strip_mcols(vitro_atac_dmrt1_reduce))))  #use peak list for cagSox9 and cagDmrt1
+length(vitro_atac_combine_reduce<-keepSeqlevels(vitro_atac_combine_reduce,c(1:19,"X"),pruning.mode="coarse"))  #all female so remove peaks on Y and MT
+length(vitro_atac_combine_reduce<-suppressWarnings(vitro_atac_combine_reduce[!vitro_atac_combine_reduce %over% mito_homologs]))
+head(names(vitro_atac_combine_reduce)<-paste0("vitro_atac_combine_reduce",formatC(1:length(vitro_atac_combine_reduce),width=6,format="d",flag="0")))
+
+(fls.atac.sox9.gran <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% 
+   grep("ATAC",.,value=T) %>% 
+   grep("P043",.,value=T) %>% 
+   grep("gran",.,value=T ))
+
+(fls.atac.dmrt1.gran <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% 
+   grep("ATAC",.,value=T) %>% 
+   grep("marked",.,value=T,invert=T) %>% 
+   grep("P037",.,value=T) %>% 
+   grep("gran",.,value=T ))
+
+#system.time(vitro_atac_combine_reduce_counts<- summarizeOverlaps(vitro_atac_combine_reduce,BamFileList(c(fls.atac.sox9.gran,fls.atac.dmrt1.gran),yieldSize = 1e5),mode =Union, ignore.strand=T))
+#as.data.frame(apply(assays(vitro_atac_combine_reduce_counts)$counts,2,sum))
+#save(vitro_atac_combine_reduce_counts,file="vitro_atac_combine_reduce_counts.rdata")
+load("vitro_atac_combine_reduce_counts.rdata")
+
+vitro_dds_combine<-DESeqDataSet(vitro_atac_combine_reduce_counts,design = ~1)
+mcols(vitro_dds_combine)$basepairs<-width(vitro_atac_combine_reduce)
+colData(vitro_dds_combine)$sample<-colnames(assays(vitro_atac_combine_reduce_counts)$counts) %>% gsub("\\.bam","",.)
+colData(vitro_dds_combine)$batch<-factor(c(rep(c("b1","b2"),each=6)))
+colData(vitro_dds_combine)$transgene<-factor(c(rep("cag_sox9",3),rep("control",3),rep("control",2),"cag_dmrt1","control",rep("cag_dmrt1",2)))
+
+as.data.frame(colData(vitro_dds_combine<-estimateSizeFactors(vitro_dds_combine)))
+plotPCA(normTransform(vitro_dds_combine),intgroup=c("transgene","batch")) + theme_bw() + ggtitle("PCA on In Vitro ATAC-Seq")
+
+# find mean peak values
+f_mean_atac_combine_vitro <- fpkm(vitro_dds_combine,robust=TRUE) %>% as.data.frame() %>% 
+  tibble::rownames_to_column(var="region") %>% 
+  tidyr::gather(sample,fpkm,-region) %>%
+  dplyr::mutate(transgene=paste0(colData(vitro_dds_combine)[sample,]$transgene,":",colData(vitro_dds_combine)[sample,]$batch)) %>% 
+  dplyr::group_by(region,transgene) %>% 
+    dplyr::summarize(mean_fpkm=round(log2(mean(fpkm)+0.1),3)) %>% 
+    ungroup() %>% 
+  dplyr::select(region,transgene,mean_fpkm) %>% 
+  tidyr::spread(transgene,mean_fpkm) %>%  as.data.frame() 
+
+rownames(f_mean_atac_combine_vitro)<-f_mean_atac_combine_vitro$region
+f_mean_atac_combine_vitro<-f_mean_atac_combine_vitro[,-1]
+head(f_mean_atac_combine_vitro)
+
+
+stopifnot(all.equal(names(vitro_atac_combine_reduce),rownames(f_mean_atac_combine_vitro)))
+mcols(vitro_atac_combine_reduce)<-f_mean_atac_combine_vitro
+#colnames(mcols(vitro_atac))<-gsub("\\.bam","",colnames(mcols(vitro_atac)))
+
+export(vitro_atac_combine_reduce,"vitro_atac_combine_reduce.bed")
+#IGVgoto(sock, wls(vitro_atac_combine_reduce["vitro_atac_combine_reduce041401"]))
+#vitro_atac_combine_reduce["vitro_atac_combine_reduce041401"]
+
+design(vitro_dds_combine)<-~batch + transgene
+vitro_dds_combine<-DESeq(vitro_dds_combine)
+summary(vitro_res_combine_dmrt1_raw<-results(vitro_dds_combine,contrast=c("transgene","cag_dmrt1","control"),alpha=0.05))
+summary(vitro_res_combine_sox9_raw<-results(vitro_dds_combine,contrast=c("transgene","cag_sox9","control"),alpha=0.05))
+vitro_res_combine_dmrt1<-as.data.frame(vitro_res_combine_dmrt1_raw)
+vitro_res_combine_sox9<-as.data.frame(vitro_res_combine_sox9_raw)
+
+#vitro_res_combine_dmrt1$ihw<-ihw(pvalue ~ baseMean,  data = vitro_res_combine_dmrt1, alpha = 0.05)@df$adj_pvalue
+#vitro_res_combine_sox9$ihw<-ihw(pvalue ~ baseMean,  data = vitro_res_combine_sox9, alpha = 0.05)@df$adj_pvalue
+
+stopifnot(all.equal(rownames(vitro_res_combine_dmrt1),names(vitro_atac_combine_reduce)))
+vitro_atac_combine_reduce$baseMean<-vitro_res_combine_dmrt1$baseMean
+vitro_atac_combine_reduce$cag_dmrt1_lfc<-vitro_res_combine_dmrt1$log2FoldChange
+vitro_atac_combine_reduce$cag_dmrt1_padj<-vitro_res_combine_dmrt1$padj
+
+stopifnot(all.equal(rownames(vitro_res_combine_sox9),names(vitro_atac_combine_reduce)))
+vitro_atac_combine_reduce$cag_sox9_lfc<-vitro_res_combine_sox9$log2FoldChange
+vitro_atac_combine_reduce$cag_sox9_padj<-vitro_res_combine_sox9$padj
+
+#View(as.data.frame(vitro_atac_combine_reduce))
+#classify
+table(vitro_atac_combine_reduce$class<-case_when (
+  vitro_atac_combine_reduce$baseMean > 7 & vitro_atac_combine_reduce$cag_dmrt1_padj < 0.05 & vitro_atac_combine_reduce$cag_sox9_padj > 0.05 ~ "Dmrt1 DAR",
+  vitro_atac_combine_reduce$baseMean > 7 & vitro_atac_combine_reduce$cag_dmrt1_padj > 0.05 & vitro_atac_combine_reduce$cag_sox9_padj < 0.05 ~ "Sox9 DAR",
+  vitro_atac_combine_reduce$baseMean > 7 & vitro_atac_combine_reduce$cag_dmrt1_padj < 0.05 & vitro_atac_combine_reduce$cag_sox9_padj < 0.05 ~ "Common DAR",
+  vitro_atac_combine_reduce$baseMean > 7 ~ "Constitutive",
+  TRUE ~ "unclassified"
+))
+
+
+
+mcols(vitro_atac_combine_reduce) %>% as.data.frame() %>% 
+ # dplyr::filter(cag_dmrt1_padj < 0.05 | cag_sox9_padj < 0.05) %>% 
+  #dplyr::filter((cag_dmrt1.b2 > 3 & control.b2 < 2) | (cag_sox9.b1 > 3 & control.b1 < 2) ) %>% 
+  #dplyr::filter(cag_dmrt1.b2 > 4 | control.b2 > 4 |  cag_sox9.b1 > 4 | control.b1 > 4 ) %>% 
+  dplyr::filter(class != "unclassified" & class != "Constitutive") %>% 
+  dplyr::filter(!(is.na(cag_sox9_lfc) | is.na(cag_dmrt1_lfc))) %>% 
+  ggplot(aes(x=cag_dmrt1_lfc,y=cag_sox9_lfc,colour=class)) + geom_point(alpha=1) + 
+  scale_colour_manual(values=c("black","blue","darkgreen","green")) + xlim(c(-10,10)) + ylim(c(-10,10)) +
+  geom_rect(aes(xmin=1,xmax=6,ymin=-6,ymax=6),color="red",alpha=0) +
+  geom_hline(colour="gray",yintercept=0)+geom_vline(colour="gray",xintercept=0)
+
+data.frame(table(vitro_atac_combine_reduce$class))
+
+
+
+vitro_atac_combine_reduce_subset<-vitro_atac_combine_reduce[vitro_atac_combine_reduce$class!="unclassified"]
+#View(as.data.frame(vitro_atac_combine_reduce_subset))
+
+
+vitro_atac_combine_reduce["vitro_atac_combine_reduce104245"]
+#IGVgoto(sock, wls(vitro_atac_combine_reduce["vitro_atac_combine_reduce104245"]))
+```
+
+```{r}
+#How many Dmrt1 DARs are bound by Dmrt1/Sox9 in cagDmrt1 and Sox9 in CagSox9 expressing granlosa cells?
+
+length(temp<-vitro_atac_combine_reduce[vitro_atac_combine_reduce$class=="Dmrt1 DAR" & vitro_atac_combine_reduce$cag_dmrt1_lfc > 1])
+length(temp_con<-vitro_atac_combine_reduce[vitro_atac_combine_reduce$class=="Constitutive" &
+                                   vitro_atac_combine_reduce$`cag_dmrt1:b2` > 5 & vitro_atac_combine_reduce$`cag_dmrt1:b2` < 8 &
+                                   vitro_atac_combine_reduce$`cag_sox9:b1` > 5 & vitro_atac_combine_reduce$`cag_sox9:b1` < 8  &
+                                   vitro_atac_combine_reduce$`control:b1` > 5 & vitro_atac_combine_reduce$`cag_sox9:b1` < 8  &
+                                   vitro_atac_combine_reduce$`control:b2` > 5 & vitro_atac_combine_reduce$`control:b2` < 8])
+length(temp_con<-temp_con[!(temp_con %over% gran_ctvdmrt1_dmrt1 | temp_con %over% gran_ctvsox9_sox9 | temp_con %over% gran_ctvdmrt1_sox9 )])
+temp<-c(temp,temp_con)
+
+length(temp[temp %over% gran_ctvdmrt1_dmrt1])
+length(temp[temp %over% gran_ctvsox9_sox9])
+length(temp[temp %over% gran_ctvdmrt1_sox9])
+
+data.frame(sort(table(temp$sox_binding <-case_when (
+  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9 ~ "Dmrt1-Dependent Sox9",
+  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 w/ Constitutive Sox9",
+    temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 cagDmrt1 or Sox9 in cagSox9",
+  temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "Dmrt1 w/o Sox9",
+  !temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "No Dmrt1 or Sox9",
+  !temp %over% gran_ctvdmrt1_dmrt1 & (temp %over% gran_ctvdmrt1_sox9 | temp %over% gran_ctvsox9_sox9)  ~ "Sox9 w/o Dmrt1",
+  TRUE ~ "unclassified"
+))))
+
+table(temp[temp$class=="Constitutive"]$sox_binding<-"Constitutive Control")
+
+length(temp<-temp[temp$sox_binding=="Dmrt1-Dependent Sox9" | temp$sox_binding=="Dmrt1 w/o Sox9" | temp$sox_binding=="Dmrt1 w/ Constitutive Sox9" | temp$sox_binding=="Constitutive Control"])
+temp$sox_binding<-factor(temp$sox_binding,levels=c("Dmrt1 w/ Constitutive Sox9","Dmrt1-Dependent Sox9","Dmrt1 w/o Sox9","Constitutive Control"))
+temp_2<-peak_center(temp) 
+#heatmap
+
+#atac
+seqlevelsStyle(temp_2)<-"NCBI"
+g_atac_control<-rtracklayer::import("../data/control_P037_ATACseq.bigWig",selection=temp_2+2000)
+g_atac_dmrt1<-rtracklayer::import("../data/Dmrt1_P037_ATACseq.bigWig",selection=temp_2+2000)
+g_atac_control2<-rtracklayer::import("../data/merged_control2_P043_ATAC.bigWig",selection=temp_2+2000)
+g_atac_sox9<-rtracklayer::import("../data/merged_sox9_P043_ATAC.bigWig",selection=temp_2+2000)
+
+#SRAdb::IGVload(sock,"/Users/gearh006/Documents/Notebook/GCD/zarkowe0/data/gran_d7_cagSox9_cagCreERT2_Sox9ChIP_Index22.fastq.dedup.unique.bigWig")
+#SRAdb::IGVload(sock,"/Users/gearh006/Documents/Notebook/GCD/zarkowe0/data/gran_d7_cagSox9_cagCreERT2_Sox9ChIP_Index22.fastq.bigWig")
+#SRAdb::IGVload(sock,"/Users/gearh006/Documents/Notebook/GCD/zarkowe0/data/sox9_chip_from_sox9_expressing_granulsa_cells_idx9_Project033_041317.fastq.dedup.unique.ucsc.bigWig")
+#SRAdb::IGVload(sock,"/Users/gearh006/Documents/Notebook/GCD/zarkowe0/data/gran_d7_ctvDmrt1_cagCreERT2_Sox9ChIP_Index19.fastq.dedup.unique.bigWig")
+#SRAdb::IGVload(sock,"/Users/gearh006/Documents/Notebook/GCD/zarkowe0/data/granulosa_ctvdmrt1_Dmrt1_Project032_122716.fastq.bigWig")
+#SRAdb::IGVload(sock,"/Users/gearh006/Documents/Notebook/GCD/zarkowe0/data/granulosa_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.ucsc.bigWig")
+#SRAdb::IGVload(sock,"/Users/gearh006/Documents/Notebook/GCD/zarkowe0/data/granulosa_ctvdmrt1_Sox9_Project032_122716.fastq.macs_peaks.narrowPeak")
+
+seqlevelsStyle(temp_2)<-"NCBI"
+#g_sox9_cagsox9<-rtracklayer::import("../data/gran_d7_cagSox9_cagCreERT2_Sox9ChIP_Index22.fastq.dedup.unique.bigWig",selection=temp_2+2000) #rep1
+###g_sox9_cagsox9<-rtracklayer::import("../data/gran_d7_cagSox9_cagCreERT2_Sox9ChIP_Index22.fastq.bigWig",selection=temp_2+2000) #rep1
+#g_sox9_cagdmrt1<-rtracklayer::import("../data/gran_d7_ctvDmrt1_cagCreERT2_Sox9ChIP_Index19.fastq.dedup.unique.bigWig",selection=temp_2+2000)
+g_sox9_cagdmrt1<-rtracklayer::import("../data/granulosa_ctvdmrt1_Sox9_Project032_122716.fastq.bigWig",selection=temp_2+2000)
+g_dmrt1<-rtracklayer::import("../data/granulosa_ctvdmrt1_Dmrt1_Project032_122716.fastq.bigWig",selection=temp_2+2000) 
+g_sox9p33<-rtracklayer::import("../data/sox9_chip_from_sox9_expressing_granulsa_cells_idx9_Project033_041317.fastq.bigWig",selection=temp_2+2000) #rep2
+#k27ac
+g_k27acCnt<-rtracklayer::import("../data/h3k27ac_gran_d7_mergeCnt_Idx1820.dedup.unique.bigWig",selection=temp_2+2000) #rep2
+g_k27acExp<-rtracklayer::import("../data/h3k27ac_gran_d7_mergeExp_Idx1927.dedup.unique.bigWig",selection=temp_2+2000) #rep2
+
+seqlevelsStyle(g_atac_control)<-"UCSC"
+seqlevelsStyle(g_atac_dmrt1)<-"UCSC"
+seqlevelsStyle(g_atac_control2)<-"UCSC"
+seqlevelsStyle(g_atac_sox9)<-"UCSC"
+seqlevelsStyle(g_sox9_cagsox9)<-"UCSC"
+seqlevelsStyle(g_sox9_cagdmrt1)<-"UCSC"
+seqlevelsStyle(g_sox9p33)<-"UCSC"
+seqlevelsStyle(g_dmrt1)<-"UCSC"
+
+seqlevelsStyle(g_k27acCnt)<-"UCSC"
+seqlevelsStyle(g_k27acExp)<-"UCSC"
+
+
+#chip
+seqlevelsStyle(temp_2)<-"UCSC"
+#g_dmrt1<-rtracklayer::import("../data/granulosa_ctvdmrt1_Dmrt1_Project032_122716.fastq.dedup.unique.ucsc.bigWig",selection=temp_2+2000) 
+#g_sox9p33<-rtracklayer::import("../data/sox9_chip_from_sox9_expressing_granulsa_cells_idx9_Project033_041317.fastq.dedup.unique.ucsc.bigWig",selection=temp_2+2000) #rep2
+
+
+mat_p1 = normalizeToMatrix(g_atac_control, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p2 = normalizeToMatrix(g_atac_dmrt1, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p3 = normalizeToMatrix(g_atac_control2, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p4 = normalizeToMatrix(g_atac_sox9, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p5 = normalizeToMatrix(g_dmrt1, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p6 = normalizeToMatrix(g_sox9p33, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50) #rep2
+#mat_p61 = normalizeToMatrix(g_sox9_cagsox9, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50) #rep1
+mat_p62 = normalizeToMatrix(g_sox9_cagdmrt1, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+
+mat_k27acCnt = normalizeToMatrix(g_k27acCnt, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_k27acExp = normalizeToMatrix(g_k27acExp, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+
+seqlevelsStyle(group_a_sites)<-"UCSC"
+seqlevelsStyle(group_b_sites)<-"UCSC"
+seqlevelsStyle(group_c_sites)<-"UCSC"
+mat_a_pwm=normalizeToMatrix(group_a_sites, temp_2, value_column = "score", mean_mode = "absolute",
+         extend = width, w = 50, smooth = FALSE)
+mat_b_pwm=normalizeToMatrix(group_b_sites, temp_2, value_column = "score", mean_mode = "absolute",
+         extend = width, w = 50, smooth = FALSE)
+mat_c_pwm=normalizeToMatrix(group_c_sites, temp_2, value_column = "score", mean_mode = "absolute",
+         extend = width, w = 50, smooth = FALSE)
+
+
+col_fun_p1= colorRamp2(quantile(mat_p2, c(0, 0.99)), c("white", "blue"))
+col_fun_p2= colorRamp2(quantile(mat_p2, c(0, 0.99)), c("white", "blue"))
+col_fun_p3= colorRamp2(quantile(mat_p4, c(0, 0.99)), c("white", "black"))
+col_fun_p4= colorRamp2(quantile(mat_p4, c(0, 0.99)), c("white", "black"))
+col_fun_p5= colorRamp2(quantile(mat_p5, c(0, 0.99)), c("white", "blue"))
+col_fun_p6= colorRamp2(quantile(mat_p62, c(0, 0.99)), c("white", "green"))
+#col_fun_p61= colorRamp2(quantile(mat_p62, c(0, 0.99)), c("white", "green"))
+col_fun_p62= colorRamp2(quantile(mat_p62, c(0, 0.99)), c("white", "green"))
+col_fun_k27acCnt= colorRamp2(quantile(mat_k27acCnt, c(0, 0.99)), c("white", "blue"))
+col_fun_k27acExp= colorRamp2(quantile(mat_k27acExp, c(0, 0.99)), c("white", "blue"))
+
+col=c("red","green","blue","white")
+EnrichedHeatmap(mat_p5, col = col_fun_p3, name = "chip_dmrt1",column_title = "chip_dmrt1",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,30),yaxis = F)) ) +
+EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "atac_control",column_title = "atac control1",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,30),yaxis = F)) ) +
+EnrichedHeatmap(mat_p2, col = col_fun_p2, name = "atac_dmrt1",column_title = "atac cag-Dmrt1",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,30),yaxis = F)) ) +
+EnrichedHeatmap(mat_p3, col = col_fun_p3, name = "atac_control2",column_title = "atac control2",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,10),yaxis = F)) ) +
+EnrichedHeatmap(mat_p4, col = col_fun_p4, name = "atac_sox9",column_title = "atac cag-Sox9",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,10),yaxis = F)) ) +
+EnrichedHeatmap(mat_k27acCnt, col = col_fun_k27acCnt, name = "k27acCnt",column_title = "k27acCnt",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,12),yaxis = F)) ) +
+EnrichedHeatmap(mat_k27acExp, col = col_fun_k27acExp, name = "k27acExp",column_title = "k27acExp",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,12),yaxis = F)) ) +
+EnrichedHeatmap(mat_p6, col = col_fun_p6, name = "chip_sox9p33",column_title = "chip_sox9p33",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,5),yaxis = F)) ) +
+EnrichedHeatmap(mat_p62, col = col_fun_p62, name = "chip_sox9_cagdmrt1",column_title = "chip_sox9_cagdmrt1",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,10),yaxis = F)) ) +
+EnrichedHeatmap(mat_a_pwm, col = c("white", "black"),pos_line=F, name = "Group A PEM", axis_name_rot = 90,column_title = "Group A Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
+EnrichedHeatmap(mat_b_pwm, col = c("white", "black"),pos_line=F, name = "Group B PWM", axis_name_rot = 90,column_title = "Group B Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
+EnrichedHeatmap(mat_c_pwm, col = c("white", "black"),pos_line=F, name = "Group C PWM", axis_name_rot = 90,column_title = "Group C Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) 
+
+
+#EnrichedHeatmap(mat_p61, col = col_fun_p61, name = "chip_sox9_cagsox9",column_title = "chip_sox9_cagsox9",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+#               top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = T)) ) 
+```
+
+

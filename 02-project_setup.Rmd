@@ -1,0 +1,559 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Setup
+```{r libraries,eval=T,results='hide',message=FALSE,warning=FALSE}
+#source("/data/gcd.R")
+#setwd("/data/robin/micah")
+library("GenomicFeatures")
+library("BiocParallel")
+library("Rsamtools")
+library("GenomicAlignments")
+library("VennDiagram")
+library("readr")
+library("tibble")
+library("stringr")
+library("csaw")
+library("rtracklayer")
+library("BiocParallel")
+library("edgeR")
+#library("kableExtra"     )
+library("goseq")
+#library("IHW")
+#library("pryr")
+#library("org.Mm.eg.db")
+#library("EGSEA")
+library("BSgenome.Mmusculus.UCSC.mm10")
+mm10<-BSgenome.Mmusculus.UCSC.mm10
+seqlevelsStyle(mm10)<-"NCBI"
+
+  
+library("DESeq2")
+library("RColorBrewer")
+library("ggplot2")
+#library("heatmaply")
+#library("pheatmap")
+library("dplyr")
+library("magrittr")
+library("gridExtra")
+library("ChIPpeakAnno")
+library("Rsubread")
+library("circlize")
+library("ComplexHeatmap")
+library("EnrichedHeatmap")
+library("cowplot")
+library("kableExtra")
+library("tidyr")
+library("UpSetR")
+library("ggseqlogo")
+library("motifStack")
+#library(ggplot2)
+#library(grid)
+#library(plyr)
+
+
+(ts<-format(Sys.time(), "%a_%b_%d_%Y_%H%M"))
+reset_ts<-function(x) {ts<<-format(Sys.time(), "%a_%b_%d_%Y_%H%M"); return(ts)}
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+
+#library("googlesheets")
+#source("plotEmbryonicData.R")
+load("GSE41948.rdata")
+load("symbols_M19.rdata")
+
+#Load Sample Table
+sample_table<-read.table("lindeman_sample_table.txt",stringsAsFactors = F)
+#sock<-SRAdb::IGVsocket()
+```
+
+## Define Functions
+```{r define_functions,eval=T}
+
+lighten <- function(color, factor=1.4){
+  col <- col2rgb(color)
+  col <- col*factor
+  col <- rgb(t(as.matrix(apply(col, 1, function(x) if (x > 255) 255 else x))), maxColorValue=255)
+  col
+}
+
+darken <- function(color, factor=1.4){
+  col <- col2rgb(color)
+  col <- col/factor
+  col <- rgb(t(as.matrix(apply(col, 1, function(x) if (x > 255) 255 else x))), maxColorValue=255)
+  col
+}
+
+
+colors<-cbPalette[c(2,2,2,2,7,5,5,5,5,6,4,4,4,4)]
+c1d<-cbPalette[2]
+c1a<-lighten(lighten(lighten(c1d,1.1),1.1),1.1)
+c1b<-lighten(lighten(lighten(c1d,1.0),1.1),1.1)
+c1c<-lighten(lighten(lighten(c1d,1.0),1.0),1.1)
+
+c2d<-cbPalette[4]
+c2a<-lighten(lighten(lighten(c2d,1.1),1.1),1.1)
+c2b<-lighten(lighten(lighten(c2d,1.0),1.1),1.1)
+c2c<-lighten(lighten(lighten(c2d,1.0),1.0),1.1)
+
+c3a<-cbPalette[5]
+c3d<-lighten(lighten(lighten(c3a,0.9),0.9),0.9)
+c3c<-lighten(lighten(lighten(c3a,1.0),0.9),0.9)
+c3b<-lighten(lighten(lighten(c3a,1.0),1.0),0.9)
+
+
+gg_plotCounts<-function(x="ENSMUSG00000024837",d=dds_invitro,returnData=F) {
+  if (substr(x,1,7)=="ENSMUSG") {
+    title<-symbols[grep(x,symbols$gene_id),"gene_name"]
+  } else {
+    title<-x
+    x<-symbols[grep(paste0("^",title,"$"),symbols$gene_name),"gene_id"]
+  }
+  if(returnData) {return(plotCounts(d,x,intgroup=c("gene","time"),returnData=T))}
+  plotCounts(d,x,intgroup=c("gene","time"),returnData=T)  %>%
+    mutate(time = case_when(gene == "control" & time == "fresh" ~ "granulosa",
+                            gene == "sertoli" & time == "fresh" ~ "Sertoli",
+                            TRUE ~ time )) %>% 
+    mutate(gene=as.character(gene)) %>% 
+    mutate(gene = case_when(gene == "control" & time == "granulosa" ~ "granulosa",
+                            gene == "sertoli" & time == "Sertoli" ~ "Sertoli",
+                            TRUE ~ gene )) %>% 
+    mutate(time=factor(time,levels=c("granulosa","0h","24h","48h","7d","Sertoli"))) %>%
+    mutate(gene=factor(gene,levels=c("granulosa","control","sox9","dmrt1","Sertoli"))) %>%
+    mutate(log2count=log2(count+1) ) %>%
+    ggplot(aes(x=time, y=log2count,color=gene)) +
+    stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
+                 geom = "crossbar", width = 0.35,size=0.4) +
+    geom_point(position=position_jitter(w=0.1,h=0),size=3) + ggtitle(title) +
+    ylab("Log2 ( count + 1) ") + xlab("") + scale_color_manual(values=c("magenta","darkgray","darkgreen","#549EC9","blue")) +
+    expand_limits(x=0, y = 0) + theme_bw()
+}
+
+#scale_color_manual(values = colors[c(4,9,10,14,5,6)])
+
+gg_plotCounts7d<-function(x="ENSMUSG00000024837",d=dds_7d) {
+  if (substr(x,1,7)=="ENSMUSG") {
+    title<-symbols[grep(x,symbols$gene_id),"gene_name"]
+  } else {
+    title<-x
+    x<-symbols[grep(paste0("^",title,"$"),symbols$gene_name),"gene_id"]
+  }
+
+  plotCounts(d,x,intgroup=c("gene"),returnData=T) %>%
+  #  mutate(time=factor(time,levels=c("fresh","0h","24h","48h","7d"))) %>%
+    mutate(log2count=log2(count+1) ) %>%
+    ggplot(aes(x=gene, y=log2count,color=gene)) +
+    geom_point(position=position_jitter(w=0.1,h=0),size=3) + ggtitle(title) +
+    stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
+                 geom = "crossbar", width = 0.35,size=0.4) +
+    ylab("Log2 ( count + 1) ") + scale_color_manual(values = c("red","blue","pink","black","green")) +
+    expand_limits(x=0, y = 0) + theme_bw()
+}
+
+
+
+double_plot <- function(x) {
+  g1<-gg_plotCounts(x,d=cds2)+ggtitle(paste0("cag-Dmrt1:  ",x))
+  g2<-gg_plotCounts(x,d=cds3)+ggtitle(paste0("cag-Sox9:  ",x))
+  grid.arrange(g1,g2,ncol=2)
+}
+
+
+gg_sox<-function(x="ENSMUSG00000024837",d=dds_ovary,colors=rev(colorRampPalette(brewer.pal(11,"RdBu"))(10))) {
+  if (substr(x,1,7)=="ENSMUSG") {
+    title<-symbols[grep(x,symbols$gene_id),"gene_name"]
+    #title<-mgi[grep(x,mgi$ensembl_gene_id),"mgi_symbol"]
+  } else {
+    title<-x
+    #x<-mgi[grep(paste0("^",title,"$"),mgi$mgi_symbol),"ensembl_gene_id"]
+    x<-symbols[grep(paste0("^",title,"$"),symbols$gene_name),"gene_id"]
+  }
+  
+  
+  plotCounts(d,x,intgroup=c("time","gene","sox8","sox9"),returnData = T) %>% 
+  tidyr::unite(group,time,gene,sox8,sox9,sep=":",remove=F) %>% 
+  #mutate(group=factor(group,levels=c("ovary:control:4","ovary:control:0","ovary:dmrt1:0","ovary:dmrt1:1","ovary:dmrt1:2","ovary:dmrt1:4","testis:control:4"))) %>% 
+  mutate(group=factor(group,levels=c("ovary:control:2:2","ovary:control:0:0","ovary:dmrt1:0:0","ovary:dmrt1:0:1",
+                                     "ovary:dmrt1:1:0","ovary:dmrt1:1:1","ovary:dmrt1:2:0",
+                                     "ovary:dmrt1:2:2","testis:control:2:2"))) %>% 
+  ggplot(aes(x=group,y=count,color=group)) + geom_point(size=5) +
+    stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
+                 geom = "crossbar", width = 0.35,size=0.4) +
+    theme_bw() +  ggtitle(paste0(title," : ",x)) + 
+    xlab("") + ylab("Normalized Counts") +
+    scale_color_manual(values=c("magenta",colors[c(10,9,8,7,4,3,2)],"blue")) +
+     geom_text(aes(label=ifelse( (sox8+sox9 < 4 & sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=group,y=count),colour="black",size=3) +
+    theme(legend.position="none") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    
+  
+  #plotCounts(d,x,intgroup=c("sox","gene","batch"),returnData=T) %>%
+  #  tibble::rownames_to_column() %>%
+  #  mutate(group=paste(batch,gene,sep=":")) %>%
+  #  ggplot(aes(x=sox, y=count,colour=group)) +
+  #  geom_point(position=position_jitter(w=0.1,h=0)) + ggtitle(paste0(title," : ",x)) +
+  #  expand_li  mits(x=0, y = 0) + xlab("Copies of Sox8/Sox9") + ylab("Normalized Counts") +
+  #  facet_grid(~gene) +
+  #  theme(legend.position="none") +
+  #  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+
+gg_ovary<-function(x="ENSMUSG00000024837",d=dds_ovary) {
+  if (substr(x,1,7)=="ENSMUSG") {
+    title<-mgi[grep(x,mgi$ensembl_gene_id),"mgi_symbol"]
+  } else {
+    title<-x
+    x<-mgi[grep(paste0("^",title,"$"),mgi$mgi_symbol),"ensembl_gene_id"]
+  }
+
+  plotCounts(d,x,intgroup=c("gene","sox"),returnData=T) %>%
+   # mutate(time=factor(time,levels=c("fresh","0h","24h","48h","7d"))) %>%
+    mutate(log2count=log2(count+1) ) %>%
+    ggplot(aes(x=sox, y=log2count,color=gene)) +
+    geom_point(position=position_jitter(w=0.1,h=0),size=3) + ggtitle(title) +
+    ylab("Log2 ( count + 1) ") +
+    expand_limits(x=0, y = 0) + theme_bw()
+}
+
+
+wls<- function(x) { paste0("chr",seqnames(x),":",start(x),"-",end(x))}
+
+broadPeakToGRanges<-function(file,name="peak", ...) {
+  x <- read.table(file,stringsAsFactors=F, ...)
+  gr <-GRanges(seqnames=x$V1, ranges = IRanges(start=x$V2, end=x$V3),
+               strand="*", score=x$V5, e=x$V7,p=x$V8,q=x$V9)
+  names(gr)<-paste0(name,"_",formatC(1:length(gr),width=5,format="d",flag="0"))
+  return(gr)
+}
+
+
+narrowPeakToGRanges<-function(file,name="peak", ...) {
+  x <- read.table(file,stringsAsFactors=F, ...) 
+  gr <-GRanges(seqnames=x$V1, ranges = IRanges(start=x$V2, end=x$V3),
+               strand="*", score=x$V5, e=x$V7,summit=x$V10)
+  names(gr)<-paste0(name,"_",formatC(1:length(gr),width=5,format="d",flag="0"))
+  return(gr)
+}
+
+annotate_peaks<-function(gr,tx=transcripts,cutoff=500000) {
+  seqlevelsStyle(gr)<-"NCBI"
+  #gr<-gr[!gr %over% bl_mm10]
+  
+  gr_anno<-annotatePeakInBatch(gr, AnnotationData=tx, output="both", maxgap=500L)
+  seqlevelsStyle(gr_anno)<-"NCBI"
+  #length(gr_anno<-subset(gr_anno, shortestDistance < cutoff))
+  #seqlevelsStyle(gr_anno)<-"NCBI"
+  
+
+  gr_anno$symbol<-tx$symbol[match(gr_anno$feature,names(tx))]
+  
+  x<-mcols(gr_anno) %>% as.data.frame %>%
+  dplyr::filter(symbol!="") %>% 
+  dplyr::group_by(peak) %>%
+  summarize(gene=paste(unique(symbol),collapse=";")) %>% as.data.frame
+
+  
+  gr$genes<-x[match(names(gr),x$peak),"gene"]
+  gr$wls<-wls(gr)
+  gr<-gr[with(gr,order(-score))]
+  
+  #return chacter vector of peaks associated with each ENSEMBL ID
+  return(gr)
+  
+}
+
+analyzeGO<-function(genes,g2c=mgi_go.list) {
+  degs<-as.numeric(expressed_genes %in% genes)
+  names(degs)<-expressed_genes
+  #table(degs_dmrt1)
+  go_wall<-goseq(nullp(degs,bias.data=bd.dmrt1),gene2cat=g2c)
+  if ("term" %in% colnames(go_wall)) {} else {go_wall$term<-go_wall$category}
+  go_wall[1:20,c("term","category","numDEInCat","numInCat","over_represented_pvalue")] %>% 
+  dplyr::mutate(over_represented_pvalue= -1* log10(over_represented_pvalue)) %>% 
+  dplyr::mutate(term=tools::toTitleCase(tolower(gsub("_"," ",gsub("GO_","",term))))) %>%
+  dplyr::mutate(term=factor(term,levels=rev(term))) %>% 
+  ggplot(aes(x=term,y=over_represented_pvalue,size=numDEInCat)) + 
+  geom_point() + coord_flip() + xlab("") + ylab("- log10 ( Over represented p-value)")
+  theme_bw() 
+}
+
+listGO<-function(goid,dg=degs,filter=T) {
+  
+if (substr(goid,3,3)==":") {
+  #goid<-"GO:0030238"
+  print(as.data.frame(mgi_goterms[grep(goid,mgi_goterms$`GO ID`),1:3]))
+  tg<-data.frame(ensembl=mgi_go[grep(goid,mgi_go$`GO ID`),"ensembl"])
+  tg<-tg[tg$ensembl %in% expressed_genes,,drop=F]
+  cat(paste0("There are ",nrow(tg)," expressed genes in this category.\n"))
+  idx<-match(tg$ensembl,symbols$gene_id)
+  tg$symbol<-symbols[idx,"gene_name"]
+  tg$deg<-dg[tg$ensembl]
+  if (filter) { tg<-tg[tg$deg==1,]}
+  cat (paste0("The ",nrow(tg)," differentially expressed genes are:\n"))
+  return(tg)
+  } else {
+  #goid<-"GO_MALE_SEX_DETERMINATION"
+  tg<-data.frame(ensembl=Mm.c5_ensembl[[toupper(goid)]],stringsAsFactors = F)
+  #print(as.data.frame(mgi_goterms[grep(goid,mgi_goterms$`GO ID`),1:3]))
+  #tg<-as.data.frame(mgi_go[grep(goid,mgi_go$`GO ID`),"ensembl"])
+  tg<-tg[tg$ensembl %in% expressed_genes,,drop=F]
+  cat(paste0("There are ",nrow(tg)," expressed genes in this category.\n"))
+  idx<-match(tg$ensembl,symbols$gene_id)
+  tg$symbol<-symbols[idx,"gene_name"]
+  tg$deg<-dg[tg$ensembl]
+  if (filter) { tg<-tg[tg$deg==1,]}
+  cat (paste0("The ",nrow(tg)," differentially expressed genes are:\n"))
+  return(tg)
+}
+}
+
+
+plotPCA.DESeqTransform = function(object, intgroup="condition", ntop=500, dims=c(1,2),returnData=FALSE)
+{
+  # calculate the variance for each gene
+  rv <- rowVars(assay(object))
+  
+  # select the ntop genes by variance
+  select <- order(rv, decreasing=TRUE)[seq_len(min(ntop, length(rv)))]
+  
+  # perform a PCA on the data in assay(x) for the selected genes
+  pca <- prcomp(t(assay(object)[select,]))
+  
+  # the contribution to the total variance for each component
+  percentVar <- pca$sdev^2 / sum( pca$sdev^2 )
+  
+  if (!all(intgroup %in% names(colData(object)))) {
+    stop("the argument 'intgroup' should specify columns of colData(dds)")
+  }
+  
+  intgroup.df <- as.data.frame(colData(object)[, intgroup, drop=FALSE])
+  
+  # add the intgroup factors together to create a new grouping factor
+  group <- if (length(intgroup) > 1) {
+    factor(apply( intgroup.df, 1, paste, collapse=":"))
+  } else {
+    colData(object)[[intgroup]]
+  }
+  
+  # assembly the data for the plot
+  d <- data.frame(a=pca$x[,dims[1]], b=pca$x[,dims[2]], group=group, intgroup.df, name=colnames(object))
+  colnames(d)[1:2]<-paste0("PC",dims)
+  
+  if (returnData) {
+    attr(d, "percentVar") <- percentVar[dims]
+    attr(d, "rotation")<-pca$rotation
+    return(d)
+  }
+  
+  ggplot(data=d, aes_string(x=paste0("PC",dims[1]), y=paste0("PC",dims[2]), color=group)) + geom_point(size=3) + 
+    xlab(paste0("PC",dims[1],": ",round(percentVar[dims[1]] * 100),"% variance")) +
+    ylab(paste0("PC",dims[2],": ",round(percentVar[dims[2]] * 100),"% variance")) 
+    # removed coord_fixed()
+}
+
+g_legend<-function(a.gplot){ 
+  tmp <- ggplot_gtable(ggplot_build(a.gplot)) 
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box") 
+  legend <- tmp$grobs[[leg]] 
+  return(legend)} 
+
+topify<-function(filename) {
+if (class(filename)=="character") { length(gr<-narrowPeakToGRanges(filename)) } else { gr<-filename }
+gr<-keepSeqlevels(gr,value=c(1:19,"X"),pruning.mode = "coarse")
+seqlevelsStyle(gr)<-"NCBI"
+length(gr<-gr[!gr %over% rmsk])
+gr<-gr[!gr %over% bl_mm10]
+
+#length(gr)
+qs<-quantile(gr$score, c(0, 0.25, 0.5, 0.75, 0.98))
+#plot(sort(gr$score,decreasing=T),pch=16,cex=0.5,col="red")
+#abline(h=qs,col="black")
+return(gr[gr$score > qs[4] & gr$score < qs[5]])
+}
+
+peak_center<-function(gr) { GRanges(seqnames=seqnames(gr),IRanges(start=start(gr)+width(gr)/2,width=1),strand=strand(gr)) }
+
+
+
+find_sites<-function(i,pfm=dmrt1_pfm,score="85%") {
+temp1<-suppressWarnings(matchPWM(PWM(pfm),mm10[[i]],min.score=score, with.score=TRUE))
+temp2<-suppressWarnings(matchPWM(PWM(reverseComplement(pfm)),mm10[[i]],min.score=score, with.score=TRUE))
+return(sort(c(GRanges(seqnames=i,temp1@ranges,strand="+",score=round(temp1@elementMetadata$score,3)),
+              GRanges(seqnames=i,temp2@ranges,strand="-",score=round(temp2@elementMetadata$score,3)))))
+}
+
+```
+
+## Import annotations and import blacklist file
+```{r gencode_annotations,eval=F}
+
+#point to file downloaded above
+gff3_file<-"../../R_RESOURCES/gencode.vM19.annotation.gff3"
+
+txdb<-makeTxDbFromGFF(gff3_file,format="gff3")
+seqlevelsStyle(txdb)<-"NCBI"
+
+#get symbols and biotypes from gff3 file that is not in txdb
+M16<-import(gff3_file,format="gff3")
+seqlevelsStyle(M16)<-"NCBI"
+symbols<-as.data.frame(mcols(M16))
+symbols<-symbols[symbols$type=="gene",c("gene_id","gene_name","gene_type")]
+symbols$chr<-as.character(seqnames(M16[match(symbols$gene_id,M16$gene_id)]))
+symbols$gene_id<-substr(symbols$gene_id,1,18)
+table(symbols$chr)
+
+#add symbol & biotype to a transcripts GRanges object
+transcripts<-transcripts(txdb,columns=c("gene_id","tx_name"))
+transcripts$gene_id<-substr(unlist(transcripts$gene_id),1,18)
+names(transcripts)<-transcripts$tx_name
+mcols(transcripts)<-data.frame(gene_id=transcripts$gene_id,stringsAsFactors = F)
+transcripts$symbol<-symbols$gene_name[match(transcripts$gene_id,symbols$gene_id)]
+transcripts$biotype<-symbols$gene_type[match(transcripts$gene_id,symbols$gene_id)]
+
+bl_mm10<-import("../../R_RESOURCES/mm10.blacklist.bed")
+seqlevelsStyle(bl_mm10)<-"NCBI"
+
+save(symbols,transcripts,bl_mm10,file="symbols_M19.rdata")
+```
+
+
+## Load GO data
+```{r load_go,eval=F}
+
+#download.file("http://www.informatics.jax.org/downloads/reports/gene_association.mgi.gz",destfile="../../R_RESOURCES/gene_association.mgi.gz")
+#download.file("http://www.informatics.jax.org/downloads/reports/go_terms.mgi",destfile="../../R_RESOURCES/go_terms.mgi")
+#download.file("http://www.informatics.jax.org/downloads/reports/MRK_ENSEMBL.rpt",destfile="../../R_RESOURCES/MRK_ENSEMBL.rpt")
+#R.utils::gunzip("../../R_RESOURCES/gene_association.mgi.gz")
+
+mgi_go<-as.data.frame(readr::read_delim("../../R_RESOURCES/gene_association.mgi",delim="\t",skip=24,col_names=F))
+
+colnames(mgi_go)<-c("DB","DB Object ID","Mgi Symbol","Qualifier","GO ID","DB:eEference","Evidence Code",
+                    "WithorFrom","Aspect","DB Object Name","DB Object Syn","DB Object Type","Taxon","Date","Assigned By",
+                    "Annotation Extension","Gene Product Form ID")
+table(mgi_go$`Evidence Code`)
+#high quality?  
+#dim(mgi_go<-mgi_go[mgi_go$`Evidence Code` %in% c("EXP","IDA","IEP","IGI","IMP","IPI","ISS","TAS"),])
+
+grep("Foxl2",mgi_go$`Mgi Symbol`)
+grep("MGI:1349428",mgi_go$`DB Object ID`)
+grep("MGI:1349428",mgi_ensembl$X1)
+
+grep("MGI:1354733",mgi_go$`DB Object ID`)
+grep("MGI:1354733",mgi_ensembl$X1)
+
+#convert MGI_IDs to Ensembl IDs
+#mgi_ensembl<-read.table("../../R_RESOURCES/MRK_ENSEMBL.rpt",fill=F,stringsAsFactors = F,sep = "\t")
+mgi_ensembl<-as.data.frame(readr::read_tsv("../../R_RESOURCES/MRK_ENSEMBL.rpt",col_names = F))
+
+summary(idx<-match(mgi_go$`DB Object ID`,mgi_ensembl$X1))
+#View(as.data.frame(mgi_go[is.na(idx),]))
+mgi_go$ensembl<-mgi_ensembl[idx,"X6"]
+
+
+#x<-subset(mgi_go,is.na(ensembl))
+#symbols$gene_name[(unique(x$`Mgi Symbol`) %in% symbols$gene_name)]
+
+dim(mgi_go<-mgi_go[substr(mgi_go$ensembl,1,7)=="ENSMUSG",c("ensembl","GO ID")])
+dim(mgi_go<-mgi_go[mgi_go$ensembl %in% symbols$gene_id,]) #eliminate genes that we don't have any data for
+
+#subset to BP
+mgi_goterms<-as.data.frame(readr::read_delim("../../R_RESOURCES/go_terms.mgi",delim="\t",col_names=F))
+colnames(mgi_goterms)<-c("Category","GO ID","Description")
+table(mgi_goterms$Category)
+dim(mgi_BP_goterms<-mgi_goterms[mgi_goterms$Category=="Biological Process","GO ID"])
+dim(mgi_go<-mgi_go[mgi_go$`GO ID` %in% mgi_BP_goterms$`GO ID`,])
+
+grep("ENSMUSG00000024837",mgi_go$ensembl)
+
+# Because we have different experiments in this project (namely ovary vs in vitro) we are going to skip this line so the mgi_go table has information for all the genes in it.  Non-expressed genes will be eliminated by goseq
+#dim(mgi_go<-mgi_go[mgi_go$ensembl %in% expressed_genes,])
+
+#remove duplicated entries (possibly from multiple lines of evidence)
+dim(mgi_go<-mgi_go[!duplicated(mgi_go),])
+
+mgi_go.list<-split(mgi_go$`GO ID`,mgi_go$ensembl)
+mgi_go.listByGene<-split(mgi_go$`GO ID`,mgi_go$ensembl)
+
+symbols[grep("Dmrt1",symbols$gene_name),]
+mgi_go.list[["ENSMUSG00000024837"]] # not express in ovary
+
+symbols[grep("Foxl2",symbols$gene_name),]
+mgi_go.list[["ENSMUSG00000050397"]]
+
+#View(mgi_goterms[mgi_goterms$`GO ID` %in% mgi_go.list[["ENSMUSG00000024837"]],])
+#View(mgi_goterms[mgi_goterms$`GO ID` %in% mgi_go.list[["ENSMUSG00000050397"]],])
+
+
+symbols[symbols$gene_id %in% mgi_go[grep("GO:0030238",mgi_go$`GO ID`),"ensembl"],] #male sex determination
+symbols[symbols$gene_id %in% mgi_go[grep("GO:0019100",mgi_go$`GO ID`),"ensembl"],] #male sex determination
+
+#bias.data
+#bd<-sum(width(reduce(ens87)))
+bd<-mcols(dds)$basepairs
+names(bd)<-rownames(dds)
+bd["ENSMUSG00000024837"]
+
+save(bd,mgi_go,mgi_go.list,mgi_goterms,mgi_go.listByGene,file="mgi_go_annotations.rdata")
+```
+
+## Alternatively load WEHI (MSigDB) GO datasets
+
+```{r wehi_go, eval=F}
+#download.file("http://bioinf.wehi.edu.au/software/MSigDB/mouse_c5_v5p2.rdata",destfile = "../../R_RESOURCES/mouse_c5_v5p2.rdata")
+load("../../R_RESOURCES/mouse_c5_v5p2.rdata")
+
+library(AnnotationHub)
+
+ah <- AnnotationHub()
+query(ah, "EnsDb")
+ens92<-query(ah, pattern = c("Mus musculus", "EnsDb", 92))[[1]]
+
+names(Mm.c5)[grep("GONAD",names(Mm.c5))]
+Mm.c5[["GO_DEVELOPMENTAL_PROCESS_INVOLVED_IN_REPRODUCTION"]]
+keytypes(ens92)
+
+entrez2ensembl<-function(genes) {
+temp<-AnnotationDbi::select(ens92,keys=genes,keytype="ENTREZID",columns=c("GENEID","SYMBOL"))
+#filter out genes that are not in symbols
+temp<-temp[temp$GENEID %in% symbols$gene_id,]
+return(unique(na.omit(temp[,"GENEID"])))
+}
+
+#example
+head(entrez2ensembl(Mm.c5[["GO_MALE_SEX_DETERMINATION"]]))
+
+#lapply across all MSigDB
+Mm.c5_ensembl<-lapply(Mm.c5,entrez2ensembl)
+symbols[symbols$gene_id %in% Mm.c5_ensembl[["GO_MALE_SEX_DETERMINATION"]],]
+
+temp<-Mm.c5_ensembl
+
+temp2<-stack(temp)
+head(temp2)
+temp2$ind<-as.character(temp2$ind)
+Mm_c5.ensembl_by_gene<-split(temp2$ind,temp2$values)
+
+#check it
+Mm_c5.ensembl_by_gene[["ENSMUSG00000024837"]]
+Mm_c5.ensembl_by_gene[["ENSMUSG00000040363"]]
+Mm_c5.ensembl_by_gene[["ENSMUSG00000046532"]]
+
+save(Mm_c5.ensembl_by_gene,file="wehi_go_annotations.rdata")
+```
+
+## sample table
+```{r sample_table,tidy=FALSE}
+
+#knitr::kable( head(iris, 20), caption = 'Here is another nice table!', booktabs = TRUE )
+#knitr::kable( sample_table, caption = 'Sample Table!', booktabs = TRUE )
+knitr::kable(
+  sample_table, caption = 'Here is a nice table!', format="html",
+  booktabs = TRUE
+)  %>%  kable_styling() %>%
+  scroll_box(width = "100%", height = "200px")
+```
+
+## Session Info
+```{r sessionInfo,eval=T}
+sessionInfo()
+```

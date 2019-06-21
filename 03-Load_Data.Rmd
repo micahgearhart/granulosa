@@ -1,0 +1,165 @@
+---
+title: "Load Data"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Load Resources and Data
+
+## Load resources
+```{r load_resources,eval=T}
+load("mgi_go_annotations.rdata")
+load("symbols_M19.rdata")
+```
+
+## Load and label
+```{r loadCounts,eval=T}
+
+#load(url("https://s3.msi.umn.edu/zarkowe0/featureCounts_Gencode-M16_q4_Mon_Jan_22_2018_1051.rdata"))
+#load("../data/featureCounts_Gencode-M16_q4_Mon_Jan_22_2018_1051.rdata")
+#load("symbols_M16.rdata")
+#load(url("https://s3.msi.umn.edu/gearhart/mgi91.rdata"))
+
+#download.file("https://s3.msi.umn.edu/zarkowe0/featureCounts_Gencode-M19_q4_Fri_Nov_02_2018_1100.rdata",destfile = "featureCounts_Gencode-M19_q4_Fri_Nov_02_2018_1100.rdata")
+load("featureCounts_Gencode-M19_q4_Fri_Nov_02_2018_1100.rdata")
+load("symbols_M19.rdata")
+
+coldata<-as.data.frame(apply(rev_stranded_counts$counts,2,sum))
+colnames(coldata)<-"total_counts"
+dim(coldata)
+
+coldata$filename<-rownames(coldata) %>% 
+  gsub("X\\.home\\.bardwell\\.gearh006\\.Project_035\\.GRCm38.","",.) %>% 
+  gsub("\\.\\.\\.Project_035\\.GRCm38\\.","",.) %>% 
+  gsub("\\.\\.\\.Project_037\\.GRCm38\\.","",.) %>% 
+  gsub("\\.\\.\\.Project_038\\.GRCm38\\.","",.) %>% 
+  gsub("\\.\\.\\.Bardwell_Project_041\\.GRCm38\\.","",.) %>% 
+  gsub("X\\.home\\.bardwell\\.gearh006\\.Project_033p3\\.GRCm38\\.","",.)  %>% 
+  gsub("X\\.home\\.bardwell\\.gearh006\\.genewiz\\.GRCm38\\.","",.)  %>% 
+  gsub("\\.repair","",.)
+
+unstranded_coldata<-as.data.frame(apply(unstranded_counts$counts,2,sum))  
+colnames(unstranded_coldata)<-"total_counts"
+dim(unstranded_coldata)
+
+unstranded_coldata$filename<-rownames(unstranded_coldata) %>% 
+  gsub("X\\.home\\.bardwell\\.gearh006\\.dmrt1\\.ctv\\.mm10\\.GRCm38\\.","",.)  %>% 
+  gsub("\\.repair","",.)
+
+coldata<-rbind(coldata,unstranded_coldata)
+counts<-cbind(rev_stranded_counts$counts,unstranded_counts$counts)
+
+dds<-DESeqDataSetFromMatrix(counts,colData = coldata,design = ~1)
+rownames(colData(dds)) <- colData(dds)$filename %>%
+  gsub("\\.Aligned\\.out\\.bam","",.) %>% 
+  gsub("\\.Aligned\\.sortedByCoord\\.out\\.bam","",.) %>% 
+  gsub("_scaled\\.bam","",.) %>% 
+  gsub("\\.bam","",.)
+rownames(dds)<-substr(rownames(dds),1,18)
+mcols(dds)$basepairs<-rev_stranded_counts$annotation$Length
+#mcols(dds)$mgi_symbol<-mgi[match(rownames(dds),mgi$ensembl_gene_id),]$mgi_symbol
+mcols(dds)$symbol<-symbols[match(rownames(dds),symbols$gene_id),]$gene_name
+
+#as.data.frame(colData(dds)
+
+#colData(dds)$userid<-sapply(strsplit(sample_table[colData(dds)$filename],","),function(x) x[1])
+#colData(dds)$trial <-sapply(strsplit(sample_table[colData(dds)$filename],","),function(x) x[2])
+#colData(dds)$gene <-factor(sapply(strsplit(sample_table[colData(dds)$filename],","),function(x) x[3]))
+#colData(dds)$time <-factor(sapply(strsplit(sample_table[colData(dds)$filename],","),function(x) x[4]))
+#colData(dds)$batch <-factor(sapply(strsplit(sample_table[colData(dds)$filename],","),function(x) x[5]))
+
+colData(dds)$userid<-sample_table[colData(dds)$filename,"user"]
+colData(dds)$trial<-sample_table[colData(dds)$filename,"batch"]
+colData(dds)$gene<-factor(sample_table[colData(dds)$filename,"gene"])
+colData(dds)$time<-sample_table[colData(dds)$filename,"time"]
+colData(dds)$batch<-sample_table[colData(dds)$filename,"project"]
+#View(as.data.frame(colData(dds)))
+#as.data.frame(colData(dds))
+
+dds<-estimateSizeFactors(dds)
+plotPCA(normTransform(dds),intgroup=c("time")) + theme_bw() + ggtitle("PCA on All RNA-Seq Samples")
+
+```
+
+
+## Load ChIP & ATAC Peaklists
+```{r}
+
+#For Figure 1E
+length(ovary8w_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary82_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))
+length(ovary_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary8w_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.macs_peaks.narrowPeak")))
+rmsk<-rtracklayer::import("../../R_RESOURCES/mm10_rmsk_TE.gtf")
+seqlevelsStyle(rmsk)<-"NCBI"
+rmsk<-keepSeqlevels(rmsk,value=c(1:19,"X","Y"),pruning.mode = "coarse")
+
+length(dmrt1_pwm<-rtracklayer::import("../data/dmrt1_invitro_pwm_score85.bed"))
+seqlevelsStyle(dmrt1_pwm)<-"NCBI"
+length(sox9_pwm<-rtracklayer::import("../data/sox9_pwm_score85.bed"))
+seqlevelsStyle(sox9_pwm)<-"NCBI"
+#length(lrh_pwm<-rtracklayer::import("../data/lrh_pwm_score85.bed"))
+#seqlevelsStyle(lrh_pwm)<-"NCBI"
+length(klf4_pwm<-rtracklayer::import("../../R_RESOURCES/klf4_pwm_score85.bed"))
+seqlevelsStyle(klf4_pwm)<-"NCBI"
+length(foxl2_pwm<-rtracklayer::import("foxl2_pwm_score95.bed"))
+seqlevelsStyle(foxl2_pwm)<-"NCBI"
+
+#Figure 0b - Futtner ATAC-seq
+length(peak_e105_atac_XX_dm19 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM19_E105_broad_nomodel_041919_peaks.broadPeak"))
+length(peak_e105_atac_XX_dm24 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM24_E105_broad_nomodel_041919_peaks.broadPeak"))
+length(peak_e105_atac_XY_dm21 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM21_E105_broad_nomodel_041919_peaks.broadPeak"))
+length(peak_e105_atac_XY_dm22 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM22_E105_broad_nomodel_041919_peaks.broadPeak"))
+
+length(peak_e135_atac_XX_dm12 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM12_E135_broad_nomodel_041919_peaks.broadPeak"))
+length(peak_e135_atac_XX_dm13 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM13_E135_broad_nomodel_041919_peaks.broadPeak"))
+length(peak_e135_atac_XY_dm15 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM15_E135_broad_nomodel_041919_peaks.broadPeak"))
+length(peak_e135_atac_XY_dm16 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM16_E135_broad_nomodel_041919_peaks.broadPeak"))
+
+length(peak_e105_atac_XX <- reduce(c(peak_e105_atac_XX_dm19,peak_e105_atac_XX_dm24)))
+length(peak_e105_atac_XX<-peak_e105_atac_XX[peak_e105_atac_XX %over% peak_e105_atac_XX_dm19 & 
+                                               peak_e105_atac_XX %over% peak_e105_atac_XX_dm24 &
+                                               !peak_e105_atac_XX %over% bl_mm10])
+
+length(peak_e105_atac_XY <- reduce(c(peak_e105_atac_XY_dm21,peak_e105_atac_XY_dm22)))
+length(peak_e105_atac_XY <-peak_e105_atac_XY[peak_e105_atac_XY %over% peak_e105_atac_XY_dm21 & 
+                                             peak_e105_atac_XY %over% peak_e105_atac_XY_dm22 &
+                                             !peak_e105_atac_XY %over% bl_mm10])
+
+length(peak_e135_atac_XX <- reduce(c(peak_e135_atac_XX_dm12,peak_e135_atac_XX_dm13)))
+length(peak_e135_atac_XX<-peak_e135_atac_XX[peak_e135_atac_XX %over% peak_e135_atac_XX_dm12 & 
+                                               peak_e135_atac_XX %over% peak_e135_atac_XX_dm13 &
+                                               !peak_e135_atac_XX %over% bl_mm10])
+
+length(peak_e135_atac_XY <- reduce(c(peak_e135_atac_XY_dm15,peak_e135_atac_XY_dm16)))
+length(peak_e135_atac_XY<-peak_e135_atac_XY[peak_e135_atac_XY %over% peak_e135_atac_XY_dm15 & 
+                                               peak_e135_atac_XY %over% peak_e135_atac_XY_dm16 &
+                                               !peak_e135_atac_XY %over% bl_mm10])
+
+length(peak_p23_atac_XX<-broadPeakToGRanges("../data/p23_granulosa_ATAC_P028_N704_042119_peaks.broadPeak"))
+length(peak_p7_atac_XY<-broadPeakToGRanges("../data/p7_Sertoli_ATAC_P028_N702_042119_peaks.broadPeak"))
+
+mito_homologs<-narrowPeakToGRanges("../data/mitochondrial_homologs_peaks.narrowPeak")
+
+
+#ChIP Peak lists
+length(sertoli_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.dedup.unique.macs_peaks.narrowPeak")))
+length(ovary_foxl2<-narrowPeakToGRanges("../data/ovaryav574_CAGATC_042219_peaks.narrowPeak"))
+length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.macs_peaks.narrowPeak")))
+
+# In Vitro ATAC-Seq (Figure 5D)
+length(vitro_atac_control2<-broadPeakToGRanges("../data/control2.macs_peaks.broadPeak"))
+length(vitro_atac_sox9<-broadPeakToGRanges("../data/sox9.macs_peaks.broadPeak"))
+length(vitro_atac_sox9_reduce<-reduce(c(vitro_atac_control2,vitro_atac_sox9)))
+
+length(vitro_atac_control <-broadPeakToGRanges("../data/control_P037_ATACseq.macs_peaks.broadPeak"))
+length(vitro_atac_dmrt1<-broadPeakToGRanges("../data/cagDmrt1_P037_ATACseq.macs_peaks.broadPeak"))
+length(vitro_atac_dmrt1_reduce<-reduce(c(vitro_atac_control,vitro_atac_dmrt1)))
+
+
+#In vitro ChIP
+ length(gran_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/granulosa_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))
+ length(gran_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/granulosa_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.macs_peaks.narrowPeak")))
+#length(gran_control_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/granulosa_control_Sox9_Project032_122716.fastq.macs_peaks.narrowPeak"))) # no sox9
+  length(gran_ctvsox9_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_chip_from_sox9_expressing_granulsa_cells_idx9_Project033_041317.fastq.dedup.unique.macs_peaks.narrowPeak")))
+```
+

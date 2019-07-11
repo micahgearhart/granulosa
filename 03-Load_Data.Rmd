@@ -135,25 +135,90 @@ length(peak_e135_atac_XY<-peak_e135_atac_XY[peak_e135_atac_XY %over% peak_e135_a
                                                peak_e135_atac_XY %over% peak_e135_atac_XY_dm16 &
                                                !peak_e135_atac_XY %over% bl_mm10])
 
-length(peak_p23_atac_XX<-broadPeakToGRanges("../data/p23_granulosa_ATAC_P028_N704_042119_peaks.broadPeak"))
-length(peak_p7_atac_XY<-broadPeakToGRanges("../data/p7_Sertoli_ATAC_P028_N702_042119_peaks.broadPeak"))
+#Open regions in Granulosa Cells
+length(peak_p23_atac_XX_rep1<-broadPeakToGRanges("../data/fresh_gran_ATAC_rep1_N701_GW052319.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX_rep2<-broadPeakToGRanges("../data/fresh_gran_ATAC_rep2_N702_GW052319.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX_rep3<-broadPeakToGRanges("../data/fresh_gran_ATAC_rep3_N703_GW052319.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX <- reduce(c(peak_p23_atac_XX_rep1,peak_p23_atac_XX_rep2,peak_p23_atac_XX_rep3)))
+length(peak_p23_atac_XX<-peak_p23_atac_XX[peak_p23_atac_XX %over% peak_p23_atac_XX_rep1& 
+                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep2 &
+                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep3 &
+                                               !peak_p23_atac_XX %over% bl_mm10])
+
+#Open regions in Sertoli Cells
+length(peak_p7_atac_XY_rep1<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep1_N704_GW052319.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY_rep2<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep2_N705_GW052319.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY_rep3<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep3_N706_GW052319.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY <- reduce(c(peak_p7_atac_XY_rep1,peak_p7_atac_XY_rep2,peak_p7_atac_XY_rep3)))
+length(peak_p7_atac_XY<-peak_p7_atac_XY[peak_p7_atac_XY %over% peak_p7_atac_XY_rep1& 
+                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep2 &
+                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep3 &
+                                               !peak_p7_atac_XY %over% bl_mm10])
+
+
+#length(peak_p23_atac_XX<-broadPeakToGRanges("../data/p23_granulosa_ATAC_P028_N704_042119_peaks.broadPeak"))
+#length(peak_p7_atac_XY<-broadPeakToGRanges("../data/p7_Sertoli_ATAC_P028_N702_042119_peaks.broadPeak"))
 
 mito_homologs<-narrowPeakToGRanges("../data/mitochondrial_homologs_peaks.narrowPeak")
 
 
 #ChIP Peak lists
 length(sertoli_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.dedup.unique.macs_peaks.narrowPeak")))
-length(ovary_foxl2<-narrowPeakToGRanges("../data/ovaryav574_CAGATC_042219_peaks.narrowPeak"))
+#length(ovary_foxl2<-narrowPeakToGRanges("../data/ovaryav574_CAGATC_042219_peaks.narrowPeak"))
+length(ovary_foxl2<-narrowPeakToGRanges("../data/foxl2ChIP_wt_ovary_070519g_peaks.narrowPeak")) 
+length(ovary_foxl2<-ovary_foxl2[!ovary_foxl2 %over% bl_mm10])
 length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.macs_peaks.narrowPeak")))
 
 # In Vitro ATAC-Seq (Figure 5D)
-length(vitro_atac_control2<-broadPeakToGRanges("../data/control2.macs_peaks.broadPeak"))
-length(vitro_atac_sox9<-broadPeakToGRanges("../data/sox9.macs_peaks.broadPeak"))
-length(vitro_atac_sox9_reduce<-reduce(c(vitro_atac_control2,vitro_atac_sox9)))
+#length(vitro_atac_control2<-broadPeakToGRanges("../data/control2.macs_peaks.broadPeak"))
+#length(vitro_atac_sox9<-broadPeakToGRanges("../data/sox9.macs_peaks.broadPeak"))
+#length(vitro_atac_sox9_reduce<-reduce(c(vitro_atac_control2,vitro_atac_sox9)))
+```
 
-length(vitro_atac_control <-broadPeakToGRanges("../data/control_P037_ATACseq.macs_peaks.broadPeak"))
-length(vitro_atac_dmrt1<-broadPeakToGRanges("../data/cagDmrt1_P037_ATACseq.macs_peaks.broadPeak"))
-length(vitro_atac_dmrt1_reduce<-reduce(c(vitro_atac_control,vitro_atac_dmrt1)))
+
+## Load In Vitro data
+```{r}
+
+length(peak_vitro_atac_cagSox9control_rep1<-broadPeakToGRanges("../data/gran_7d_cagSox9_noCRE_ATAC_rep1_N707_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagSox9control_rep2<-broadPeakToGRanges("../data/gran_7d_cagSox9_noCRE_ATAC_rep2_N708_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagSox9control_rep3<-broadPeakToGRanges("../data/gran_7d_cagSox9_noCRE_ATAC_rep3_N709_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagSox9control <- reduce(c(peak_vitro_atac_cagSox9control_rep1,peak_vitro_atac_cagSox9control_rep2,peak_vitro_atac_cagSox9control_rep3)))
+length(peak_vitro_atac_cagSox9control<-peak_vitro_atac_cagSox9control[peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep1 & 
+                                               peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep2 &
+                                               peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep3 &
+                                               !peak_vitro_atac_cagSox9control %over% bl_mm10])
+
+length(peak_vitro_atac_cagSox9_rep1<-broadPeakToGRanges("../data/gran_7d_cagSox9_CRE_ATAC_rep1_N710_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagSox9_rep2<-broadPeakToGRanges("../data/gran_7d_cagSox9_CRE_ATAC_rep2_N711_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagSox9_rep3<-broadPeakToGRanges("../data/gran_7d_cagSox9_CRE_ATAC_rep3_N712_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagSox9 <- reduce(c(peak_vitro_atac_cagSox9_rep1,peak_vitro_atac_cagSox9_rep2,peak_vitro_atac_cagSox9_rep3)))
+length(peak_vitro_atac_cagSox9<-peak_vitro_atac_cagSox9[peak_vitro_atac_cagSox9 %over% peak_vitro_atac_cagSox9_rep1 & 
+                                               peak_vitro_atac_cagSox9 %over% peak_vitro_atac_cagSox9_rep2 &
+                                               peak_vitro_atac_cagSox9 %over% peak_vitro_atac_cagSox9_rep3 &
+                                               !peak_vitro_atac_cagSox9 %over% bl_mm10])
+
+#length(peak_vitro_atac_cagDmrt1control <-broadPeakToGRanges("../data/control_P037_ATACseq.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagDmrt1control_rep1<-broadPeakToGRanges("../data/gran_p7control_n1_P037_ATACseq_N703_galore.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagDmrt1control_rep2<-broadPeakToGRanges("../data/gran_noCre_d7_P037_ATACseq_N705_galore.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagDmrt1control_rep3<-broadPeakToGRanges("../data/gran_noCAGDmrt1_d7_P037_ATACseq_N707_galore.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagDmrt1control <- reduce(c(peak_vitro_atac_cagDmrt1control_rep1,peak_vitro_atac_cagDmrt1control_rep2,peak_vitro_atac_cagDmrt1control_rep3)))
+length(peak_vitro_atac_cagDmrt1control<-peak_vitro_atac_cagDmrt1control[peak_vitro_atac_cagDmrt1control %over% peak_vitro_atac_cagDmrt1control_rep1 & 
+                                               peak_vitro_atac_cagDmrt1control %over% peak_vitro_atac_cagDmrt1control_rep2 &
+                                               peak_vitro_atac_cagDmrt1control %over% peak_vitro_atac_cagDmrt1control_rep3 &
+                                               !peak_vitro_atac_cagDmrt1control %over% bl_mm10])
+
+
+#length(peak_vitro_atac_cagDmrt1<-broadPeakToGRanges("../data/cagDmrt1_P037_ATACseq.macs_peaks.broadPeak"))
+#Use intersection of all three triplicates
+length(peak_vitro_atac_cagDmrt1_rep1<-broadPeakToGRanges("../data/gran_p7CAGDmrt1_n2_P037_ATACseq_N702_galore.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagDmrt1_rep2<-broadPeakToGRanges("../data/gran_plusCre_d7_P037_ATACseq_N706_galore.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagDmrt1_rep3<-broadPeakToGRanges("../data/gran_plusCAGDmrt1_d7_P037_ATACseq_N708_galore.dedup.unique.macs_peaks.broadPeak"))
+length(peak_vitro_atac_cagDmrt1 <- reduce(c(peak_vitro_atac_cagDmrt1_rep1,peak_vitro_atac_cagDmrt1_rep2,peak_vitro_atac_cagDmrt1_rep3)))
+length(peak_vitro_atac_cagDmrt1<-peak_vitro_atac_cagDmrt1[peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep1 & 
+                                               peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep2 &
+                                               peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep3 &
+                                               !peak_vitro_atac_cagDmrt1 %over% bl_mm10])
+
 
 
 #In vitro ChIP

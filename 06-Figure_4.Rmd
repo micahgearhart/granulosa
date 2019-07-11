@@ -9,7 +9,7 @@ editor_options:
 # Figure
 
 ## Panel A & B - In Vitro RNA-seq
-```{r figure4,eval=F}
+```{r figure4,eval=T}
 
 as.data.frame(colData(dds_invitro<-dds[,!str_detect(colData(dds)$time,"ovary|testis") & !str_detect(colData(dds)$batch,"GW") ]))
 
@@ -87,7 +87,6 @@ as.data.frame(colData(dds_7dko<-dds[,!str_detect(colData(dds)$time,"ovary|testis
 
 gg_plotCounts("Plppr4",d=dds_invitro)
 gg_plotCounts7d("Plppr4",d=dds_7dko)
-
 ```
 
 

@@ -33,7 +33,7 @@ colData(dds_ovary)$batch<-as.factor(colData(dds_ovary)$batch)
 as.data.frame(colData(dds_ovary))
 
 
-
+  
 #plotPCA(normTransform(dds_ovary),intgroup=c("batch","gene","sox")) + theme_bw()
 
 #design(dds_ovary)<- ~ batch + gene + sox
@@ -413,9 +413,9 @@ length(temp_sox9<-temp_sox9[countOverlaps(peak_center(temp_sox9)+100,dmrt1_pwm) 
 length(a<-temp_dmrt1[!temp_dmrt1 %over% ovary_ctvdmrt1_sox9])
 length(b<-temp_dmrt1[temp_dmrt1 %over% temp_sox9])
 length(c<-temp_sox9[!temp_sox9 %over% ovary8w_ctvdmrt1_dmrt1 ])
-grid.newpage()
-vennplot <- draw.pairwise.venn(length(a),length(c),length(b), c("ovary8w_ctvdmrt1_dmrt1", "ovary_ctvdmrt1_sox9"))
-
+#grid.newpage()
+#vennplot <- draw.pairwise.venn(length(a),length(c),length(b), c("ovary8w_ctvdmrt1_dmrt1", "ovary_ctvdmrt1_sox9"))
+#cross section area too large 
 
 sample_size<-79
 length(d<-sample(vivo_atac_subset[vivo_atac_subset$class=="Constitutive" & vivo_atac_subset$postnatal_Female_na > 3.3 & vivo_atac_subset$postnatal_Male_na > 3.3],sample_size))

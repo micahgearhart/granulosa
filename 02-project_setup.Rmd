@@ -19,11 +19,11 @@ library("csaw")
 library("rtracklayer")
 library("BiocParallel")
 library("edgeR")
-#library("kableExtra"     )
+#library("kableExtra")
 library("goseq")
 #library("IHW")
 #library("pryr")
-#library("org.Mm.eg.db")
+#library("org.Mm.eg.db")  
 #library("EGSEA")
 library("BSgenome.Mmusculus.UCSC.mm10")
 mm10<-BSgenome.Mmusculus.UCSC.mm10
@@ -62,6 +62,7 @@ cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2",
 #source("plotEmbryonicData.R")
 load("GSE41948.rdata")
 load("symbols_M19.rdata")
+
 
 #Load Sample Table
 sample_table<-read.table("lindeman_sample_table.txt",stringsAsFactors = F)
@@ -218,6 +219,11 @@ gg_ovary<-function(x="ENSMUSG00000024837",d=dds_ovary) {
 
 wls<- function(x) { paste0("chr",seqnames(x),":",start(x),"-",end(x))}
 
+swl<- function(x) {
+  x_split<-strsplit(as.character(x),":|-")
+  GRanges(seqnames=gsub("chr","",sapply(x_split, function(y) y[1])),IRanges(start=as.integer(gsub(",","",sapply(x_split, function(y) y[2]))),end=as.integer(gsub(",","",sapply(x_split, function(y) y[3])))),strand="*")
+  }
+
 broadPeakToGRanges<-function(file,name="peak", ...) {
   x <- read.table(file,stringsAsFactors=F, ...)
   gr <-GRanges(seqnames=x$V1, ranges = IRanges(start=x$V2, end=x$V3),
@@ -246,16 +252,29 @@ annotate_peaks<-function(gr,tx=transcripts,cutoff=500000) {
   
 
   gr_anno$symbol<-tx$symbol[match(gr_anno$feature,names(tx))]
+  gr_anno$dimorphic<-ifelse(tx$gene_id[match(gr_anno$feature,names(tx))] %in% sertoli_up, "Sert",
+                       ifelse(tx$gene_id[match(gr_anno$feature,names(tx))] %in% granulosa_up, "Gran","None"))
+                       
+  
   
   x<-mcols(gr_anno) %>% as.data.frame %>%
   dplyr::filter(symbol!="") %>% 
   dplyr::group_by(peak) %>%
-  summarize(gene=paste(unique(symbol),collapse=";")) %>% as.data.frame
+  summarize(gene=paste(unique(symbol),collapse=";"), dimorph=paste(sort(unique(dimorphic)),collapse=";")) %>% 
+    ungroup() %>% 
+    mutate(dimorph=case_when (
+      dimorph == "Gran;None" ~ "Gran",
+      dimorph == "None;Sert" ~ "Sert",
+      dimorph == "Gran;None;Sert" ~ "Gran;Sert",
+      TRUE ~ dimorph
+      ))  %>% 
+    as.data.frame
 
   
   gr$genes<-x[match(names(gr),x$peak),"gene"]
-  gr$wls<-wls(gr)
-  gr<-gr[with(gr,order(-score))]
+  gr$dimorph <-x[match(names(gr),x$peak),"dimorph"]
+  #gr$wls<-wls(gr)
+  #gr<-gr[with(gr,order(-score))]
   
   #return chacter vector of peaks associated with each ENSEMBL ID
   return(gr)
@@ -382,6 +401,22 @@ return(sort(c(GRanges(seqnames=i,temp1@ranges,strand="+",score=round(temp1@eleme
               GRanges(seqnames=i,temp2@ranges,strand="-",score=round(temp2@elementMetadata$score,3)))))
 }
 
+
+topify<-function(filename) {
+if (class(filename)=="character") { length(gr<-narrowPeakToGRanges(filename)) } else { gr<-filename }
+gr<-keepSeqlevels(gr,value=c(1:19,"X"),pruning.mode = "coarse")
+seqlevelsStyle(gr)<-"NCBI"
+length(gr<-gr[!gr %over% rmsk])
+gr<-gr[!gr %over% bl_mm10]
+
+#length(gr)
+qs<-quantile(gr$score, c(0, 0.25, 0.5, 0.75, 0.98))
+#plot(sort(gr$score,decreasing=T),pch=16,cex=0.5,col="red")
+#abline(h=qs,col="black")
+return(gr[gr$score > qs[4] & gr$score < qs[5]])
+}
+
+
 ```
 
 ## Import annotations and import blacklist file
@@ -394,11 +429,11 @@ txdb<-makeTxDbFromGFF(gff3_file,format="gff3")
 seqlevelsStyle(txdb)<-"NCBI"
 
 #get symbols and biotypes from gff3 file that is not in txdb
-M16<-import(gff3_file,format="gff3")
-seqlevelsStyle(M16)<-"NCBI"
-symbols<-as.data.frame(mcols(M16))
+M19<-import(gff3_file,format="gff3")
+seqlevelsStyle(M19)<-"NCBI"
+symbols<-as.data.frame(mcols(M19))
 symbols<-symbols[symbols$type=="gene",c("gene_id","gene_name","gene_type")]
-symbols$chr<-as.character(seqnames(M16[match(symbols$gene_id,M16$gene_id)]))
+symbols$chr<-as.character(seqnames(M19[match(symbols$gene_id,M19$gene_id)]))
 symbols$gene_id<-substr(symbols$gene_id,1,18)
 table(symbols$chr)
 

@@ -223,6 +223,10 @@ VennDiagram::draw.triple.venn(area1=length(gran_ctvsox9_sox9),
 
 ```
 
+## IGVsnapshot
+chr3:117,312,672-117,333,383  #Plppr4
+chr11:112,766,063-112,786,763 #Tesco
+
 
 
 ```{r}
@@ -231,13 +235,15 @@ length(gran_ctvsox9_sox9_top<-topify(gran_ctvsox9_sox9))
 length(gran_ctvdmrt1_sox9_top<-topify(gran_ctvdmrt1_sox9))
 length(gran_ctvdmrt1_dmrt1_top<-topify(gran_ctvdmrt1_dmrt1))
 
-length(temp3<-gran_ctvsox9_sox9[gran_ctvsox9_sox9 %over% gran_ctvdmrt1_sox9 | !gran_ctvsox9_sox9 %over% gran_ctvdmrt1_dmrt1]) #predicted to be open prior to sox9
+#length(temp3<-gran_ctvsox9_sox9[gran_ctvsox9_sox9 %over% gran_ctvdmrt1_sox9 | !gran_ctvsox9_sox9 %over% gran_ctvdmrt1_dmrt1]) #predicted to be open prior to sox9
+length(temp3<-gran_ctvsox9_sox9[gran_ctvsox9_sox9 %over% vitro_atac[vitro_atac$class=="Sox9 DAR"] ]) 
 #length(temp3<-gran_ctvsox9_sox9[gran_ctvsox9_sox9 %over% gran_ctvdmrt1_sox9 | gran_ctvsox9_sox9 %over% gran_ctvdmrt1_dmrt1]) #predicted to be open prior to sox9
-length(temp3<-topify(temp3))
+#length(temp3<-topify(temp3))
 temp3<-peak_center(temp3)
 temp3$class<-"class I"
 #length(temp4<-gran_ctvdmrt1_sox9[!gran_ctvdmrt1_sox9 %over% gran_ctvsox9_sox9 & gran_ctvdmrt1_sox9 %over% gran_ctvdmrt1_dmrt1]) #predicted to be closed prior to sox9
-length(temp4<-gran_ctvdmrt1_dmrt1[!gran_ctvdmrt1_dmrt1 %over% gran_ctvsox9_sox9 & gran_ctvdmrt1_dmrt1 %over% gran_ctvdmrt1_sox9_top]) #predicted to be closed prior to sox9
+#length(temp4<-gran_ctvdmrt1_dmrt1[!gran_ctvdmrt1_dmrt1 %over% gran_ctvsox9_sox9 & gran_ctvdmrt1_dmrt1 %over% gran_ctvdmrt1_sox9_top]) #predicted to be closed prior to sox9
+length(temp4<-gran_ctvdmrt1_dmrt1[gran_ctvdmrt1_dmrt1 %over% vitro_atac[vitro_atac$class=="Dmrt1 DAR"]]) #predicted to be closed prior to sox9
 length(temp4<-topify(temp4))
 temp4<-sample(temp4,length(temp3))
 temp4<-peak_center(temp4)

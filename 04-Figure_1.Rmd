@@ -410,9 +410,125 @@ ggplot(aes(x=lfc,y=(-1*log10(padj)),color=dimorph)) + geom_point() + theme_bw() 
 
 
 ```
+## Use meme to identify motifs under Dmrt1, Foxl2 and Sox9 ChIP peaks
+```{r}
+length(ovary_foxl2)
+length(testis_sox9)
+length(sertoli_dmrt1_top<-topify(sertoli_dmrt1))
+
+ovary_foxl2.center<-GRanges(seqnames=seqnames(ovary_foxl2),IRanges(start=start(ovary_foxl2)+ovary_foxl2$summit,width=1),strand="*")+75
+ovary_foxl2.dna<-getSeq(mm10,sample(ovary_foxl2.center,length(testis_sox9)))
+names(ovary_foxl2.dna)<-paste0("ovary_foxl2_",1:length(ovary_foxl2.dna))
+export(ovary_foxl2.dna,"ovary_foxl2_sampled_151bp.fasta")
+
+testis_sox9.center<-GRanges(seqnames=seqnames(testis_sox9),IRanges(start=start(testis_sox9)+testis_sox9$summit,width=1),strand="*")+75
+testis_sox9.dna<-getSeq(mm10,testis_sox9.center)
+names(testis_sox9.dna)<-paste0("testis_sox9_",1:length(testis_sox9.dna))
+export(testis_sox9.dna,"testis_sox9_151bp.fasta")
+
+sertoli_dmrt1_top.center<-GRanges(seqnames=seqnames(sertoli_dmrt1_top),IRanges(start=start(sertoli_dmrt1_top)+sertoli_dmrt1_top$summit,width=1),strand="*")+75
+sertoli_dmrt1_top.dna<-getSeq(mm10,sample(sertoli_dmrt1_top.center,length(testis_sox9)))
+names(sertoli_dmrt1_top.dna)<-paste0("sertoli_dmrt1_top_",1:length(sertoli_dmrt1_top.dna))
+export(sertoli_dmrt1_top.dna,"sertoli_dmrt1_top_sampled_151bp.fasta")
+
+```
+
+#Import Meme on ChIPs
+```{r}
+testis_sox9.meme<-TFBSTools:::parseMEMEOutput412("testis_sox9_151bp.txt")
+x<-lengths(testis_sox9.meme_dna<-relist(getSeq(readDNAStringSet("testis_sox9_151bp.fasta"),unlist(testis_sox9.meme$motifList)),testis_sox9.meme$motifList))
+names(testis_sox9.meme_dna)<-paste0("Motif ",1:length(testis_sox9.meme$motifList),", p-value: ",testis_sox9.meme$motifEvalues," ( ",x," sites )")
+#ggplot() + geom_logo(lapply(testis_sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
+#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 ChIP Peaks")
+
+testis_sox9.pfm<-consensusMatrix(reverseComplement(testis_sox9.meme_dna[[1]]))
+testis_sox9.motif<-new("pfm",mat=t(t(testis_sox9.pfm[1:4,])*1/colSums(testis_sox9.pfm[1:4,])), name="Testis Sox9 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif),revcomp=c(F,F)))
+
+system.time(testis_sox9.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=testis_sox9.pfm[1:4,],score="85%")))
+sapply(testis_sox9.sites,length)
+testis_sox9.sites<-sort(unlist(GRangesList(testis_sox9.sites)))
+
+#foxl2
+ovary_foxl2.meme<-TFBSTools:::parseMEMEOutput412("ovary_foxl2_sampled_151bp.txt")
+x<-lengths(ovary_foxl2.meme_dna<-relist(getSeq(readDNAStringSet("ovary_foxl2_sampled_151bp.fasta"),unlist(ovary_foxl2.meme$motifList)),ovary_foxl2.meme$motifList))
+names(ovary_foxl2.meme_dna)<-paste0("Motif ",1:length(ovary_foxl2.meme$motifList),", p-value: ",ovary_foxl2.meme$motifEvalues," ( ",x," sites )")
+#ggplot() + geom_logo(lapply(ovary_foxl2.meme_dna,as.character),seq_type='dna') + theme_logo() +
+#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Foxl2 ChIP Peaks")
+
+ovary_foxl2.pfm<-consensusMatrix(reverseComplement(ovary_foxl2.meme_dna[[1]]))
+ovary_foxl2.motif<-new("pfm",mat=t(t(ovary_foxl2.pfm[1:4,])*1/colSums(ovary_foxl2.pfm[1:4,])), name="Ovary FOXL2 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(foxl2_jaspar_motif,ovary_foxl2.motif),revcomp=c(F,F)))
+
+
+sertoli_dmrt1.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dmrt1_top_sampled_151bp.txt")
+x<-lengths(sertoli_dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dmrt1_top_sampled_151bp.fasta"),unlist(sertoli_dmrt1.meme$motifList)),sertoli_dmrt1.meme$motifList))
+names(sertoli_dmrt1.meme_dna)<-paste0("Motif ",1:length(sertoli_dmrt1.meme$motifList),", p-value: ",sertoli_dmrt1.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_dmrt1.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 ChIP Peaks")
+
+sertoli_dmrt1.pfm<-consensusMatrix(reverseComplement(sertoli_dmrt1.meme_dna[[1]]))
+sertoli_dmrt1.motif<-new("pfm",mat=t(t(sertoli_dmrt1.pfm[1:4,])*1/colSums(sertoli_dmrt1.pfm[1:4,])), name="Sertoli Dmrt1 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(dmrt1_invitro_motif,sertoli_dmrt1.motif),revcomp=c(F,F)))
+
+system.time(sertoli_dmrt1.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dmrt1.pfm[1:4,],score="85%")))
+sapply(sertoli_dmrt1.sites,length)
+sertoli_dmrt1.sites<-sort(unlist(GRangesList(sertoli_dmrt1.sites)))
+
+
+#show similarity of Dmrt1 and Sox9 Motifs
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif,dmrt1_invitro_motif,sertoli_dmrt1.motif),revcomp=c(F,F,F,F)))
+
+```
 
 ## what motif is under Sertoli DARs without Dmrt1/Sox9 motifs
 ```{r}
+
+# Dmrt
+length(sertoli_dar_Dmrt1<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$peak =="D"])
+sertoli_dar_Dmrt1<-sertoli_dar_Dmrt1[with(sertoli_dar_Dmrt1,order(padj)),]
+sertoli_dar_Dmrt1$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_Dmrt1)-1000))
+
+mcols(sertoli_dar_Dmrt1) %>% as.data.frame() %>% 
+  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+ggplot(aes(x=lfc,y=(-1*log10(padj)),color=top)) + geom_point() + theme_bw()  + 
+  scale_color_manual(values=c(cbPalette[c(6,2,3,8,1,4)]))
+
+sertoli_dar_Dmrt1<-peak_center(sertoli_dar_Dmrt1[1:1000])
+sertoli_dar_Dmrt1.dna<-getSeq(mm10,sertoli_dar_Dmrt1+100)
+names(sertoli_dar_Dmrt1.dna)<-paste0("sertoli_dar_Dmrt1_",1:length(sertoli_dar_Dmrt1.dna))
+export(sertoli_dar_Dmrt1.dna,"sertoli_dar_Dmrt1_201bp.fasta")
+
+sertoli_dar_Dmrt1.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dar_Dmrt1_201bp.txt")
+x<-lengths(sertoli_dar_Dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dar_Dmrt1_201bp.fasta"),unlist(sertoli_dar_Dmrt1.meme$motifList)),sertoli_dar_Dmrt1.meme$motifList))
+names(sertoli_dar_Dmrt1.meme_dna)<-paste0("Motif ",1:length(sertoli_dar_Dmrt1.meme$motifList),", p-value: ",sertoli_dar_Dmrt1.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_dar_Dmrt1.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 Figure 1")
+
+
+# Sox9
+length(sertoli_dar_Sox9<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$peak =="S"])
+sertoli_dar_Sox9<-sertoli_dar_Sox9[with(sertoli_dar_Sox9,order(padj)),]
+# sertoli_dar_Sox9$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_Sox9)-1000))
+
+mcols(sertoli_dar_Sox9) %>% as.data.frame() %>% 
+  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+ggplot(aes(x=lfc,y=(-1*log10(padj)))) + geom_point() + theme_bw()  + 
+  scale_color_manual(values=c(cbPalette[c(6,2,3,8,1,4)]))
+
+#sertoli_dar_Sox9<-peak_center(sertoli_dar_Sox9[1:1000])
+sertoli_dar_Sox9.dna<-getSeq(mm10,sertoli_dar_Sox9+100)
+names(sertoli_dar_Sox9.dna)<-paste0("sertoli_dar_Sox9_",1:length(sertoli_dar_Sox9.dna))
+export(sertoli_dar_Sox9.dna,"sertoli_dar_Sox9_201bp.fasta")
+
+sertoli_dar_Sox9.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dar_Sox9_201bp.txt")
+x<-lengths(sertoli_dar_Sox9.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dar_Sox9_201bp.fasta"),unlist(sertoli_dar_Sox9.meme$motifList)),sertoli_dar_Sox9.meme$motifList))
+names(sertoli_dar_Sox9.meme_dna)<-paste0("Motif ",1:length(sertoli_dar_Sox9.meme$motifList),", p-value: ",sertoli_dar_Sox9.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_dar_Sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Figure 1")
+
+
+
 length(sertoli_dar_wo_DS<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$peak =="N"])
 sertoli_dar_wo_DS<-sertoli_dar_wo_DS[with(sertoli_dar_wo_DS,order(padj)),]
 sertoli_dar_wo_DS$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_wo_DS)-1000))
@@ -431,8 +547,18 @@ sertoli_dar_wo_DS.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dar_wo_DS_201bp.
 x<-lengths(sertoli_dar_wo_DS.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dar_wo_DS_201bp.fasta"),unlist(sertoli_dar_wo_DS.meme$motifList)),sertoli_dar_wo_DS.meme$motifList))
 names(sertoli_dar_wo_DS.meme_dna)<-paste0("Motif ",1:length(sertoli_dar_wo_DS.meme$motifList),", p-value: ",sertoli_dar_wo_DS.meme$motifEvalues," ( ",x," sites )")
 ggplot() + geom_logo(lapply(sertoli_dar_wo_DS.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("")
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("wo Dmrt1/Sox9 binding")
 
+sertoli_dar_wo_DS.pfm<-consensusMatrix(reverseComplement(sertoli_dar_wo_DS.meme_dna[[3]]))
+sertoli_dar_wo_DS.motif<-new("pfm",mat=t(t(sertoli_dar_wo_DS.pfm[1:4,])*1/colSums(sertoli_dar_wo_DS.pfm[1:4,])), name="sertoli_dar_wo_DS")
+
+plotMotifLogoStack(DNAmotifAlignment(list(tead2_jaspar_motif,sertoli_dar_wo_DS.motif),revcomp=c(F,F)))
+
+#Scan for TEA motif
+
+system.time(sertoli_dar_wo_DS.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dar_wo_DS.pfm[1:4,],score="90%")))
+sapply(sertoli_dar_wo_DS.sites,length)
+sertoli_dar_wo_DS.sites<-sort(unlist(GRangesList(sertoli_dar_wo_DS.sites)))
 
 
 ```
@@ -556,6 +682,7 @@ head(sort(table(g_regions$nearest_granulosa_symbol),decreasing = TRUE),20)
 ```{r}
 
 temp_1<-t_regions
+temp_1<-temp_1[temp_1$class!="Granulosa"]  #only constitutive and Sertoli
 temp_1$class<-paste0(temp_1$class,":",temp_1$deg) %>% gsub("oli","",.) %>% gsub("deg_","",.) %>% gsub("Constitutive","Con",.) %>% gsub("ulosa","", .)
 table(temp_1$class)
 temp_2<-peak_center(temp_1) 
@@ -580,9 +707,15 @@ seqlevelsStyle(g_p2)<-"UCSC"
 seqlevelsStyle(g_p4)<-"UCSC"
 seqlevelsStyle(g_p5)<-"UCSC"
 
-mat_dmrt1=normalizeToMatrix(dmrt1_pwm, temp_2, value_column = "score", mean_mode = "absolute",
+mat_dmrt1=normalizeToMatrix(sertoli_dmrt1.sites, temp_2, value_column = "score", mean_mode = "absolute",
    extend = 2000, w = 50, smooth = FALSE)
-mat_sox9=normalizeToMatrix(sox9_pwm, temp_2, value_column = "score", mean_mode = "absolute",
+#mat_dmrt1_open=normalizeToMatrix(group_a_sites, temp_2, value_column = "score", mean_mode = "absolute",
+#   extend = 2000, w = 50, smooth = FALSE)
+mat_sox9=normalizeToMatrix(testis_sox9.sites, temp_2, value_column = "score", mean_mode = "absolute",
+   extend = 2000, w = 50, smooth = FALSE)
+#mat_sox9_open=normalizeToMatrix(group_c_sites, temp_2, value_column = "score", mean_mode = "absolute",
+#   extend = 2000, w = 50, smooth = FALSE)
+mat_tea=normalizeToMatrix(sertoli_dar_wo_DS.sites, temp_2, value_column = "score", mean_mode = "absolute",
    extend = 2000, w = 50, smooth = FALSE)
 #mat_foxl2=normalizeToMatrix(foxl2_pwm, temp_2, value_column = "score", mean_mode = "absolute",
 #   extend = 2000, w = 50, smooth = FALSE)
@@ -630,7 +763,7 @@ EnrichedHeatmap(mat_ad, col = col_fun_ad, name = "atac_dmrt1",column_title = "Se
 EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "dmrt1",column_title = "Dmrt1 (Sertoli)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
                 top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,9),yaxis = F)) ) +
 EnrichedHeatmap(mat_p2, col = col_fun_p2, name = "Sox9",column_title = "Sox9 (Sertoli)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,1),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.2,0.8),yaxis = T)) ) +
 #EnrichedHeatmap(mat_p3, col = col_fun_p3, name = "Foxl2",column_title = "Foxl2 (Ovary)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
 #                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,1.5),yaxis = F)) ) +
 EnrichedHeatmap(mat_p4, col = col_fun_p4, name = "k27nc",column_title = "k27 noCRE",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
@@ -640,11 +773,15 @@ EnrichedHeatmap(mat_p5, col = col_fun_p5, name = "k27dhh",column_title = "k27 dH
 EnrichedHeatmap(mat_dmrt1, col = c("white", "darkblue"),pos_line=F, name = "dmrt1_sites", axis_name_rot = 90,column_title = "Dmrt1 Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
                 top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
 EnrichedHeatmap(mat_sox9, col = c("white", "darkgreen"),pos_line=F, name = "sox9_sites", axis_name_rot = 90,column_title = "Sox9 Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
+#EnrichedHeatmap(mat_sox9_open, col = c("white", "darkgreen"),pos_line=F, name = "group_c_sites", axis_name_rot = 90,column_title = "group c Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
+#                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
+EnrichedHeatmap(mat_tea, col = c("white", "darkblue"),pos_line=F, name = "tea_sites", axis_name_rot = 90,column_title = "TEA Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
                 top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) 
 
     
-  #EnrichedHeatmap(mat_foxl2, col = c("white", "magenta"),pos_line=F, name = "foxl2_sites", axis_name_rot = 90,column_title = "Foxl2 Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-  #                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = T)) ) 
+#EnrichedHeatmap(mat_foxl2, col = c("white", "magenta"),pos_line=F, name = "foxl2_sites", axis_name_rot = 90,column_title = "Foxl2 Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
+#                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = T)) ) 
   
   
   #Heatmap(df$gran,name="FPKM Gran",column_title = "Granulosa Expr",show_heatmap_legend = FALSE,column_title_rot=90,split=temp_1$class,width=20) + 

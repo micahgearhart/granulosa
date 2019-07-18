@@ -83,19 +83,12 @@ plotPCA(normTransform(dds),intgroup=c("time")) + theme_bw() + ggtitle("PCA on Al
 ```
 
 
-## Load ChIP & ATAC Peaklists
+## Motifs
 ```{r}
-
-#For Figure 1E
-length(ovary8w_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary82_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))
-length(ovary_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary8w_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.macs_peaks.narrowPeak")))
-rmsk<-rtracklayer::import("../../R_RESOURCES/mm10_rmsk_TE.gtf")
-seqlevelsStyle(rmsk)<-"NCBI"
-rmsk<-keepSeqlevels(rmsk,value=c(1:19,"X","Y"),pruning.mode = "coarse")
 
 length(dmrt1_pwm<-rtracklayer::import("../data/dmrt1_invitro_pwm_score85.bed"))
 seqlevelsStyle(dmrt1_pwm)<-"NCBI"
-length(sox9_pwm<-rtracklayer::import("../data/sox9_pwm_score85.bed"))
+length(sox9_pwm<-rtracklayer::import("sox9_pwm_score90.bed"))
 seqlevelsStyle(sox9_pwm)<-"NCBI"
 #length(lrh_pwm<-rtracklayer::import("../data/lrh_pwm_score85.bed"))
 #seqlevelsStyle(lrh_pwm)<-"NCBI"
@@ -103,6 +96,46 @@ length(klf4_pwm<-rtracklayer::import("../../R_RESOURCES/klf4_pwm_score85.bed"))
 seqlevelsStyle(klf4_pwm)<-"NCBI"
 length(foxl2_pwm<-rtracklayer::import("foxl2_pwm_score95.bed"))
 seqlevelsStyle(foxl2_pwm)<-"NCBI"
+
+#Add Invitro DMRT1 and JASPAR SOX9 motifs
+
+#download.file("https://s3.msi.umn.edu/zarkowe0/murphy_2007_site_selection.fa",destfile="murphy_2007_site_selection.fa")
+dmrt1_invitro_pfm<-consensusMatrix(subseq(readDNAStringSet("murphy_2007_site_selection.fa"),3,15))[1:4,]
+dmrt1_invitro_motif<-new("pfm",mat=t(t(dmrt1_invitro_pfm[1:4,])*1/colSums(dmrt1_invitro_pfm[1:4,])), name="Dmrt1_In_Vitro")
+
+#load jaspar motif
+#download.file("http://jaspar.genereg.net/api/v1/matrix/MA0077.1.pfm",destfile = "MA0077.1.pfm")
+sox9_jaspar_pfm<-as.matrix(read.table("MA0077.1.pfm",skip=1))
+sox9_jaspar_pfm <- apply (sox9_jaspar_pfm, c (1, 2), function (x) {(as.integer(x))})
+rownames(sox9_jaspar_pfm)<-c("A","C","G","T")
+sox9_jaspar_motif<-new("pfm",mat=t(t(sox9_jaspar_pfm[1:4,])*1/colSums(sox9_jaspar_pfm[1:4,])), name="Sox9_Jaspar_motif")
+
+#download.file("http://jaspar.genereg.net/api/v1/matrix/MA0033.2.pfm",destfile = "MA0033.2.pfm")
+foxl2_pfm<-as.matrix(read.table("MA0033.2.pfm",skip=1))
+foxl2_pfm <- apply (foxl2_pfm, c (1, 2), function (x) {(as.integer(x))})
+rownames(foxl2_pfm)<-c("A","C","G","T")
+colnames(foxl2_pfm)<-NULL
+foxl2_jaspar_motif<-new("pfm",mat=t(t(foxl2_pfm[1:4,])*1/colSums(foxl2_pfm[1:4,])), name="Foxl2 MA0033.2")
+
+#download.file("http://jaspar.genereg.net/api/v1/matrix/MA1121.1.pfm",destfile = "MA1121.1.pfm")
+tead2_pfm<-as.matrix(read.table("MA1121.1.pfm",skip=1))
+tead2_pfm <- apply (tead2_pfm, c (1, 2), function (x) {(as.integer(x))})
+rownames(tead2_pfm)<-c("A","C","G","T")
+colnames(tead2_pfm)<-NULL
+tead2_jaspar_motif<-new("pfm",mat=t(t(tead2_pfm[1:4,])*1/colSums(tead2_pfm[1:4,])), name="Tead2 MA1121.1")
+
+
+```
+
+## Load ChIP & ATAC Peaklists
+```{r}
+#For Figure 1E
+length(ovary8w_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary82_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))
+length(ovary_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary8w_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.macs_peaks.narrowPeak")))
+rmsk<-rtracklayer::import("../../R_RESOURCES/mm10_rmsk_TE.gtf")
+seqlevelsStyle(rmsk)<-"NCBI"
+rmsk<-keepSeqlevels(rmsk,value=c(1:19,"X","Y"),pruning.mode = "coarse")
+
 
 #Figure 0b - Futtner ATAC-seq
 length(peak_e105_atac_XX_dm19 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM19_E105_broad_nomodel_041919_peaks.broadPeak"))

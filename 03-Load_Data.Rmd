@@ -10,7 +10,7 @@ editor_options:
 ## Load resources
 ```{r load_resources,eval=T}
 load("mgi_go_annotations.rdata")
-load("symbols_M19.rdata")
+load("symbols_M23.rdata")
 ```
 
 ## Load and label
@@ -22,39 +22,65 @@ load("symbols_M19.rdata")
 #load(url("https://s3.msi.umn.edu/gearhart/mgi91.rdata"))
 
 #download.file("https://s3.msi.umn.edu/zarkowe0/featureCounts_Gencode-M19_q4_Fri_Nov_02_2018_1100.rdata",destfile = "featureCounts_Gencode-M19_q4_Fri_Nov_02_2018_1100.rdata")
-load("featureCounts_Gencode-M19_q4_Fri_Nov_02_2018_1100.rdata")
-load("symbols_M19.rdata")
+#load("featureCounts_Gencode-M19_q4_Fri_Nov_02_2018_1100.rdata")
+load("featureCounts_Gencode-M23_q4_Sun_Nov_03_2019_1857.rdata")
+load("symbols_M23.rdata")
 
-coldata<-as.data.frame(apply(rev_stranded_counts$counts,2,sum))
+coldata<-as.data.frame(apply(rev_stranded_unfiltered$counts,2,sum))
 colnames(coldata)<-"total_counts"
 dim(coldata)
 
-coldata$filename<-rownames(coldata) %>% 
-  gsub("X\\.home\\.bardwell\\.gearh006\\.Project_035\\.GRCm38.","",.) %>% 
-  gsub("\\.\\.\\.Project_035\\.GRCm38\\.","",.) %>% 
-  gsub("\\.\\.\\.Project_037\\.GRCm38\\.","",.) %>% 
-  gsub("\\.\\.\\.Project_038\\.GRCm38\\.","",.) %>% 
-  gsub("\\.\\.\\.Bardwell_Project_041\\.GRCm38\\.","",.) %>% 
-  gsub("X\\.home\\.bardwell\\.gearh006\\.Project_033p3\\.GRCm38\\.","",.)  %>% 
-  gsub("X\\.home\\.bardwell\\.gearh006\\.genewiz\\.GRCm38\\.","",.)  %>% 
-  gsub("\\.repair","",.)
-
-unstranded_coldata<-as.data.frame(apply(unstranded_counts$counts,2,sum))  
+unstranded_coldata<-as.data.frame(apply(unstranded_counts_unfiltered$counts,2,sum))  
 colnames(unstranded_coldata)<-"total_counts"
 dim(unstranded_coldata)
 
-unstranded_coldata$filename<-rownames(unstranded_coldata) %>% 
-  gsub("X\\.home\\.bardwell\\.gearh006\\.dmrt1\\.ctv\\.mm10\\.GRCm38\\.","",.)  %>% 
-  gsub("\\.repair","",.)
+#unstranded_coldata$filename<-rownames(unstranded_coldata) %>% 
+#  gsub("X\\.home\\.bardwell\\.gearh006\\.dmrt1\\.ctv\\.mm10\\.GRCm38\\.","",.)  %>% 
+#  gsub("\\.repair","",.)
 
 coldata<-rbind(coldata,unstranded_coldata)
 counts<-cbind(rev_stranded_counts$counts,unstranded_counts$counts)
+
+coldata$filename<-rownames(coldata) %>% 
+gsub("Project_035\\.GRCm38\\.","",.) %>% 
+gsub("Project_037\\.GRCm38\\.","",.) %>% 
+gsub("Project_038\\.GRCm38\\.","",.) %>% 
+gsub("Bardwell_Project_041\\.GRCm38\\.","",.) %>% 
+gsub("Project_006\\.GRCm38\\.","",.) %>% 
+gsub("Bardwell_Project_033\\.GRCm38\\.","",.) %>% 
+gsub("Bardwell_Project_035\\.GRCm38\\.","",.) %>% 
+gsub("Genewiz_Project_30144243513\\.GRCm38\\.","",.) %>% 
+gsub("\\.repair","",.)
+  
+
+#  gsub("X\\.home\\.bardwell\\.gearh006\\.Project_035\\.GRCm38.","",.) %>% 
+#  gsub("\\.\\.\\.Project_035\\.GRCm38\\.","",.) %>% 
+#  gsub("\\.\\.\\.Project_037\\.GRCm38\\.","",.) %>% 
+#  gsub("\\.\\.\\.Project_038\\.GRCm38\\.","",.) %>% 
+#  gsub("\\.\\.\\.Bardwell_Project_041\\.GRCm38\\.","",.) %>% 
+#  gsub("X\\.home\\.bardwell\\.gearh006\\.Project_033p3\\.GRCm38\\.","",.)  %>% 
+#  gsub("X\\.home\\.bardwell\\.gearh006\\.genewiz\\.GRCm38\\.","",.)  %>% 
+ 
+
+#unstranded_coldata<-as.data.frame(apply(unstranded_counts$counts,2,sum))  
+#colnames(unstranded_coldata)<-"total_counts"
+#dim(unstranded_coldata)
+
+#unstranded_coldata$filename<-rownames(unstranded_coldata) %>% 
+#  gsub("X\\.home\\.bardwell\\.gearh006\\.dmrt1\\.ctv\\.mm10\\.GRCm38\\.","",.)  %>% 
+#  gsub("\\.repair","",.)
+
+#coldata<-rbind(coldata,unstranded_coldata)
+#counts<-cbind(rev_stranded_counts$counts,unstranded_counts$counts)
 
 dds<-DESeqDataSetFromMatrix(counts,colData = coldata,design = ~1)
 rownames(colData(dds)) <- colData(dds)$filename %>%
   gsub("\\.Aligned\\.out\\.bam","",.) %>% 
   gsub("\\.Aligned\\.sortedByCoord\\.out\\.bam","",.) %>% 
   gsub("_scaled\\.bam","",.) %>% 
+  gsub("\\.sort","",.) %>% 
+  gsub("cag_","ctv_",.) %>% 
+  gsub("Bardwell_","",.) %>% 
   gsub("\\.bam","",.)
 rownames(dds)<-substr(rownames(dds),1,18)
 mcols(dds)$basepairs<-rev_stranded_counts$annotation$Length
@@ -69,11 +95,13 @@ mcols(dds)$symbol<-symbols[match(rownames(dds),symbols$gene_id),]$gene_name
 #colData(dds)$time <-factor(sapply(strsplit(sample_table[colData(dds)$filename],","),function(x) x[4]))
 #colData(dds)$batch <-factor(sapply(strsplit(sample_table[colData(dds)$filename],","),function(x) x[5]))
 
-colData(dds)$userid<-sample_table[colData(dds)$filename,"user"]
-colData(dds)$trial<-sample_table[colData(dds)$filename,"batch"]
-colData(dds)$gene<-factor(sample_table[colData(dds)$filename,"gene"])
-colData(dds)$time<-sample_table[colData(dds)$filename,"time"]
-colData(dds)$batch<-sample_table[colData(dds)$filename,"project"]
+rownames(sample_table)<-rownames(sample_table) %>%   gsub("\\.Aligned\\.out\\.bam","",.) 
+
+colData(dds)$userid<-sample_table[rownames(colData(dds)),"user"]
+colData(dds)$trial<-sample_table[rownames(colData(dds)),"batch"]
+colData(dds)$gene<-factor(sample_table[rownames(colData(dds)),"gene"])
+colData(dds)$time<-sample_table[rownames(colData(dds)),"time"]
+colData(dds)$batch<-sample_table[rownames(colData(dds)),"project"]
 #View(as.data.frame(colData(dds)))
 #as.data.frame(colData(dds))
 
@@ -118,7 +146,7 @@ colnames(foxl2_pfm)<-NULL
 foxl2_jaspar_motif<-new("pfm",mat=t(t(foxl2_pfm[1:4,])*1/colSums(foxl2_pfm[1:4,])), name="Foxl2 MA0033.2")
 
 #download.file("http://jaspar.genereg.net/api/v1/matrix/MA1121.1.pfm",destfile = "MA1121.1.pfm")
-tead2_pfm<-as.matrix(read.table("MA1121.1.pfm",skip=1))
+tead2_pfm<-as.matrix(read.table("MA1121.1.pfm",skit=1))
 tead2_pfm <- apply (tead2_pfm, c (1, 2), function (x) {(as.integer(x))})
 rownames(tead2_pfm)<-c("A","C","G","T")
 colnames(tead2_pfm)<-NULL
@@ -200,7 +228,10 @@ length(sertoli_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/c
 #length(ovary_foxl2<-narrowPeakToGRanges("../data/ovaryav574_CAGATC_042219_peaks.narrowPeak"))
 length(ovary_foxl2<-narrowPeakToGRanges("../data/foxl2ChIP_wt_ovary_070519g_peaks.narrowPeak")) 
 length(ovary_foxl2<-ovary_foxl2[!ovary_foxl2 %over% bl_mm10])
+length(ovary_esr2<-narrowPeakToGRanges("../data/ESR22_GCCAAT_042319_peaks.narrowPeak"))
+length(ovary_esr2<-ovary_esr2[!ovary_esr2 %over% bl_mm10])
 length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.macs_peaks.narrowPeak")))
+## ADD ESR2!
 
 # In Vitro ATAC-Seq (Figure 5D)
 #length(vitro_atac_control2<-broadPeakToGRanges("../data/control2.macs_peaks.broadPeak"))

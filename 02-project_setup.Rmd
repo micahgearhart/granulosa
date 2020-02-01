@@ -79,32 +79,29 @@ lighten <- function(color, factor=1.4){
   col
 }
 
-darken <- function(color, factor=1.4){
-  col <- col2rgb(color)
-  col <- col/factor
-  col <- rgb(t(as.matrix(apply(col, 1, function(x) if (x > 255) 255 else x))), maxColorValue=255)
-  col
-}
 
 
 colors<-cbPalette[c(2,2,2,2,7,5,5,5,5,6,4,4,4,4)]
-c1d<-cbPalette[2]
+#c1d<-cbPalette[1]
+c1d<-"darkgray" #control
 c1a<-lighten(lighten(lighten(c1d,1.1),1.1),1.1)
 c1b<-lighten(lighten(lighten(c1d,1.0),1.1),1.1)
 c1c<-lighten(lighten(lighten(c1d,1.0),1.0),1.1)
 
-c2d<-cbPalette[4]
+c2d<-cbPalette[4] #cag-Sox9
+#c2d<-"darkgreen"
 c2a<-lighten(lighten(lighten(c2d,1.1),1.1),1.1)
 c2b<-lighten(lighten(lighten(c2d,1.0),1.1),1.1)
 c2c<-lighten(lighten(lighten(c2d,1.0),1.0),1.1)
 
-c3a<-cbPalette[5]
-c3d<-lighten(lighten(lighten(c3a,0.9),0.9),0.9)
-c3c<-lighten(lighten(lighten(c3a,1.0),0.9),0.9)
-c3b<-lighten(lighten(lighten(c3a,1.0),1.0),0.9)
+c3d<-cbPalette[6] #cag-Dmrt1
+#c3a<-"#549EC9"
+c3a<-lighten(lighten(lighten(c3a,1.1),1.1),1.1)
+c3b<-lighten(lighten(lighten(c3a,1.0),1.1),1.1)
+c3c<-lighten(lighten(lighten(c3a,1.0),1.0),1.1)
 
 
-gg_plotCounts<-function(x="ENSMUSG00000024837",d=dds_invitro,returnData=F) {
+gg_plotCounts<-function(x="ENSMUSG00000024837",d=dds_invitro,returnData=F,fpkm=F) {
   if (substr(x,1,7)=="ENSMUSG") {
     title<-symbols[grep(x,symbols$gene_id),"gene_name"]
   } else {
@@ -112,6 +109,36 @@ gg_plotCounts<-function(x="ENSMUSG00000024837",d=dds_invitro,returnData=F) {
     x<-symbols[grep(paste0("^",title,"$"),symbols$gene_name),"gene_id"]
   }
   if(returnData) {return(plotCounts(d,x,intgroup=c("gene","time"),returnData=T))}
+  colors<-c(cbPalette[8],cbPalette[6],c1a,c1b,c1c,c1d,c2a,c2b,c2c,c2d,c3a,c3b,c3c,c3d)
+  
+  if(fpkm) {
+  return(data.frame(normalized_fpkm=fpkm(d)[x,],time=colData(d)$time,gene=colData(d)$gene) %>% 
+  tidyr::unite(group,gene,time,sep=":",remove=F) %>% 
+  mutate(time=factor(time,levels=c("fresh","0h","24h","48h","7d"))) %>% 
+  mutate(group=factor(group,levels=c("control:fresh","sertoli:fresh",
+                                     "control:0h","control:24h", "control:48h", "control:7d",
+                                     "sox9:0h","sox9:24h","sox9:48h","sox9:7d",
+                                     "dmrt1:0h","dmrt1:24h","dmrt1:48h","dmrt1:7d"))) %>% 
+   mutate(time=as.character(time)) %>% 
+   mutate(time = case_when(gene == "control" & time == "fresh" ~ "granulosa",
+                            gene == "sertoli" & time == "fresh" ~ "Sertoli",
+                            TRUE ~ time )) %>% 
+  #  mutate(gene=as.character(gene)) %>% 
+  #  mutate(gene = case_when(gene == "control" & time == "granulosa" ~ "granulosa",
+  #                          gene == "sertoli" & time == "Sertoli" ~ "Sertoli",
+  #                          TRUE ~ gene )) %>% 
+  mutate(time=factor(time,levels=c("granulosa","0h","24h","48h","7d","Sertoli"))) %>%
+  #  mutate(gene=factor(gene,levels=c("granulosa","control","sox9","dmrt1","Sertoli"))) %>% 
+    ggplot(aes(x=time, y=normalized_fpkm,fill=group,shape=time)) +
+    stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
+                 geom = "crossbar", width = 0.35,size=0.4,aes(colour=group)) + scale_color_manual(values=colors) +
+    geom_point(position=position_jitter(w=0.2,h=0),size=6) + ggtitle(title) +
+    ylab("Normalized FPKM") + xlab("") + 
+    scale_fill_manual(values = colors)+  scale_shape_manual(values=c(21,21,23,22,24,21)) + #scale_colour_manual(values=c("black")) +
+   # scale_fill_manual(values=c("magenta","darkgray","darkgreen","#549EC9","blue")) + scale_colour_manual(values=c("black")) +
+    expand_limits(x=0, y = 0) + theme_bw() + theme(legend.position = "none"))
+    
+  }
   plotCounts(d,x,intgroup=c("gene","time"),returnData=T)  %>%
     mutate(time = case_when(gene == "control" & time == "fresh" ~ "granulosa",
                             gene == "sertoli" & time == "fresh" ~ "Sertoli",
@@ -123,17 +150,21 @@ gg_plotCounts<-function(x="ENSMUSG00000024837",d=dds_invitro,returnData=F) {
     mutate(time=factor(time,levels=c("granulosa","0h","24h","48h","7d","Sertoli"))) %>%
     mutate(gene=factor(gene,levels=c("granulosa","control","sox9","dmrt1","Sertoli"))) %>%
     mutate(log2count=log2(count+1) ) %>%
-    ggplot(aes(x=time, y=log2count,color=gene)) +
+    ggplot(aes(x=time, y=log2count,fill=gene)) +
     stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
                  geom = "crossbar", width = 0.35,size=0.4) +
-    geom_point(position=position_jitter(w=0.1,h=0),size=3) + ggtitle(title) +
-    ylab("Log2 ( count + 1) ") + xlab("") + scale_color_manual(values=c("magenta","darkgray","darkgreen","#549EC9","blue")) +
+    geom_point(position=position_jitter(w=0.1,h=0),shape=21, size=8) + ggtitle(title) +
+    ylab("Log2 ( count + 1) ") + xlab("") + 
+    scale_fill_manual(values=c("magenta","darkgray","darkgreen","#549EC9","blue")) + scale_colour_manual(values=c("black")) +
     expand_limits(x=0, y = 0) + theme_bw()
 }
 
+
+
+
 #scale_color_manual(values = colors[c(4,9,10,14,5,6)])
 
-gg_plotCounts7d<-function(x="ENSMUSG00000024837",d=dds_7d) {
+gg_plotCounts7d<-function(x="ENSMUSG00000024837",d=dds_7d,fpkm=FALSE) {
   if (substr(x,1,7)=="ENSMUSG") {
     title<-symbols[grep(x,symbols$gene_id),"gene_name"]
   } else {
@@ -141,10 +172,39 @@ gg_plotCounts7d<-function(x="ENSMUSG00000024837",d=dds_7d) {
     x<-symbols[grep(paste0("^",title,"$"),symbols$gene_name),"gene_id"]
   }
 
+  if(fpkm) {
+    colors<-c(cbPalette[8],cbPalette[6],c1d,c3d,c2d,cbPalette[5],cbPalette[7])
+  return(data.frame(normalized_fpkm=fpkm(d)[x,],time=colData(d)$time,gene=colData(d)$gene) %>% 
+  tidyr::unite(group,gene,time,sep=":",remove=F) %>% 
+  mutate(time=factor(time,levels=c("fresh","0h","24h","48h","7d"))) %>% 
+  mutate(group=factor(group,levels=c("control:fresh","sertoli:fresh",
+                                     "control:7d","dmrt1:7d","sox9:7d",
+                                     "S01_dmrt1:7d","S00_dmrt1:7d"
+                                     ))) %>% 
+   mutate(time=as.character(time)) %>% 
+   mutate(time = case_when(gene == "control" & time == "fresh" ~ "granulosa",
+                            gene == "sertoli" & time == "fresh" ~ "Sertoli",
+                            TRUE ~ time )) %>% 
+  #  mutate(gene=as.character(gene)) %>% 
+  #  mutate(gene = case_when(gene == "control" & time == "granulosa" ~ "granulosa",
+  #                          gene == "sertoli" & time == "Sertoli" ~ "Sertoli",
+  #                          TRUE ~ gene )) %>% 
+    mutate(time=factor(time,levels=c("granulosa","7d","Sertoli"))) %>%
+  #  mutate(gene=factor(gene,levels=c("granulosa","control","sox9","dmrt1","Sertoli"))) %>% 
+    ggplot(aes(x=group, y=normalized_fpkm,fill=group,shape=time)) +
+    stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
+                 geom = "crossbar", width = 0.35,size=0.4,aes(colour=group)) + scale_color_manual(values=colors) +
+    geom_point(position=position_jitter(w=0.2,h=0),size=6) + ggtitle(title) +
+    ylab("Normalized FPKM") + xlab("") + 
+    scale_fill_manual(values = colors)+  scale_shape_manual(values=c(21,24,21)) + #scale_colour_manual(values=c("black")) +
+   # scale_fill_manual(values=c("magenta","darkgray","darkgreen","#549EC9","blue")) + scale_colour_manual(values=c("black")) +
+    expand_limits(x=0, y = 0) + theme_bw() + theme(legend.position = "none"))
+  }
+  
   plotCounts(d,x,intgroup=c("gene"),returnData=T) %>%
   #  mutate(time=factor(time,levels=c("fresh","0h","24h","48h","7d"))) %>%
-    mutate(log2count=log2(count+1) ) %>%
-    ggplot(aes(x=gene, y=log2count,color=gene)) +
+   # mutate(log2count=log2(count+1) ) %>%
+    ggplot(aes(x=gene, y=count,color=gene)) +
     geom_point(position=position_jitter(w=0.1,h=0),size=3) + ggtitle(title) +
     stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
                  geom = "crossbar", width = 0.35,size=0.4) +
@@ -178,13 +238,14 @@ gg_sox<-function(x="ENSMUSG00000024837",d=dds_ovary,colors=rev(colorRampPalette(
   mutate(group=factor(group,levels=c("ovary:control:2:2","ovary:control:0:0","ovary:dmrt1:0:0","ovary:dmrt1:0:1",
                                      "ovary:dmrt1:1:0","ovary:dmrt1:1:1","ovary:dmrt1:2:0",
                                      "ovary:dmrt1:2:2","testis:control:2:2"))) %>% 
-  ggplot(aes(x=group,y=count,color=group)) + geom_point(size=5) +
+  ggplot(aes(x=group,y=count,color=group)) + geom_point(size=10) +
     stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
                  geom = "crossbar", width = 0.35,size=0.4) +
     theme_bw() +  ggtitle(paste0(title," : ",x)) + 
     xlab("") + ylab("Normalized Counts") +
     scale_color_manual(values=c("magenta",colors[c(10,9,8,7,4,3,2)],"blue")) +
-     geom_text(aes(label=ifelse( (sox8+sox9 < 4 & sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=group,y=count),colour="black",size=3) +
+    # geom_text(aes(label=ifelse( (sox8+sox9 < 4 & sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=group,y=count),colour="black",size=7) +
+    geom_text(aes(label=ifelse( (sox8+sox9 < 4 | sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=group,y=count),size=7,color="black") +
     theme(legend.position="none") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
     
   
@@ -198,6 +259,37 @@ gg_sox<-function(x="ENSMUSG00000024837",d=dds_ovary,colors=rev(colorRampPalette(
   #  theme(legend.position="none") +
   #  theme_bw() + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 }
+
+gg_sox_fpkm<-function(x="ENSMUSG00000024837",d=dds_ovary,colors=rev(colorRampPalette(brewer.pal(11,"RdBu"))(10))) {
+  if (substr(x,1,7)=="ENSMUSG") {
+    title<-symbols[grep(x,symbols$gene_id),"gene_name"]
+    #title<-mgi[grep(x,mgi$ensembl_gene_id),"mgi_symbol"]
+  } else {
+    title<-x
+    #x<-mgi[grep(paste0("^",title,"$"),mgi$mgi_symbol),"ensembl_gene_id"]
+    x<-symbols[grep(paste0("^",title,"$"),symbols$gene_name),"gene_id"]
+  }
+  
+  data.frame(fpkm=fpkm(d)[x,],time=colData(d)$time,gene=colData(d)$gene,sox8=colData(d)$sox8,sox9=colData(d)$sox9) %>% 
+  tidyr::unite(group,time,gene,sox8,sox9,sep=":",remove=F) %>% 
+  #mutate(group=factor(group,levels=c("ovary:control:4","ovary:control:0","ovary:dmrt1:0","ovary:dmrt1:1","ovary:dmrt1:2","ovary:dmrt1:4","testis:control:4"))) %>% 
+  mutate(group=factor(group,levels=c("ovary:control:2:2","ovary:control:0:0","ovary:dmrt1:0:0","ovary:dmrt1:0:1",
+                                     "ovary:dmrt1:1:0","ovary:dmrt1:1:1","ovary:dmrt1:2:0",
+                                     "ovary:dmrt1:2:2","testis:control:2:2"))) %>% 
+  ggplot(aes(x=group,y=fpkm,color=group)) + geom_point(size=10) +
+    stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
+                 geom = "crossbar", width = 0.35,size=0.4) +
+    theme_bw() +  ggtitle(paste0(title," : ",x)) + 
+    xlab("") + ylab("Normalized Counts") +
+    scale_color_manual(values=c("magenta",colors[c(10,9,8,7,4,3,2)],"blue")) +
+    # geom_text(aes(label=ifelse( (sox8+sox9 < 4 & sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=group,y=count),colour="black",size=7) +
+    geom_text(aes(label=ifelse( (sox8+sox9 < 4 | sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=group,y=fpkm),size=7,color="black") +
+    theme(legend.position="none") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    
+}
+
+
+
 
 gg_ovary<-function(x="ENSMUSG00000024837",d=dds_ovary) {
   if (substr(x,1,7)=="ENSMUSG") {
@@ -423,7 +515,7 @@ return(gr[gr$score > qs[4] & gr$score < qs[5]])
 ```{r gencode_annotations,eval=F}
 
 #point to file downloaded above
-gff3_file<-"../../R_RESOURCES/gencode.vM19.annotation.gff3"
+gff3_file<-"../../R_RESOURCES/gencode.vM23.annotation.gff3"
 
 txdb<-makeTxDbFromGFF(gff3_file,format="gff3")
 seqlevelsStyle(txdb)<-"NCBI"
@@ -448,7 +540,7 @@ transcripts$biotype<-symbols$gene_type[match(transcripts$gene_id,symbols$gene_id
 bl_mm10<-import("../../R_RESOURCES/mm10.blacklist.bed")
 seqlevelsStyle(bl_mm10)<-"NCBI"
 
-save(symbols,transcripts,bl_mm10,file="symbols_M19.rdata")
+save(symbols,transcripts,bl_mm10,file="symbols_M23.rdata")
 ```
 
 

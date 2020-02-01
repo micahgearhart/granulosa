@@ -1,5 +1,5 @@
 ---
-title: "Figure 4"
+title: "Figure 4 In Vitro Analysis"
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -16,19 +16,48 @@ as.data.frame(colData(dds_invitro<-dds[,!str_detect(colData(dds)$time,"ovary|tes
 
 
 #colors<-c("#FFD200","#FFBF00","#FDAE00","#E69F00",cbPalette[c(8,4,4,4,4,6,5,5,5,5)])
-colors<-c(c1a,c1b,c1c,c1d,cbPalette[8],c2a,c2b,c2c,c2d,cbPalette[6],c3a,c3b,c3c,c3d,"pink","blue")
-plotPCA(normTransform(dds_invitro),intgroup=c("gene","time"),ntop = 500)+
-  scale_color_manual(values = colors)+theme_bw()
+#colors<-c(c1a,c1b,c1c,c1d,cbPalette[8],c2a,c2b,c2c,c2d,cbPalette[6],c3a,c3b,c3c,c3d,"pink","blue")
+
+#plotPCA(normTransform(dds_invitro),intgroup=c("gene","time"),ntop = 500)+
+#  scale_color_manual(values = colors)+theme_bw()  
+
+colors<-c(cbPalette[8],cbPalette[6],c1a,c1b,c1c,c1d,c2a,c2b,c2c,c2d,c3a,c3b,c3c,c3d)
+#colors<-c(cbPalette[8],cbPalette[6],rep("darkgray",4),rep("darkgreen",4),rep("#549EC9",4))
+plotPCA(normTransform(dds_invitro),intgroup=c("gene","time"),ntop = 500,returnData=F)
+
+figure_6b<-plotPCA(normTransform(dds_invitro),intgroup=c("gene","time"),ntop = 500,returnData=T) %>% 
+  mutate(time=factor(time,levels=c("fresh","0h","24h","48h","7d"))) %>% 
+  mutate(group=factor(group,levels=c("control:fresh","sertoli:fresh",
+                                     "control:0h","control:24h", "control:48h", "control:7d",
+                                     "sox9:0h","sox9:24h","sox9:48h","sox9:7d",
+                                     "dmrt1:0h","dmrt1:24h","dmrt1:48h","dmrt1:7d"))) %>% 
+  ggplot(aes(x=PC1,y=PC2,fill=group,shape=time)) + geom_point(size=8) +
+  xlim(c(-45,60)) + ylim(c(-100,40)) +
+  ggtitle("In Vitro Data") +
+  scale_fill_manual(values = colors)+  scale_shape_manual(values=c(21,21,23,22,24)) +
+  theme_bw() + theme(legend.position = "none")
+ 
+svglite::svglite(paste0("Figure6b_in_vitro_PCA_",ts,".svg"),width=5,height=4.5)
+figure_6b
+dev.off()
 
 #subset to same genes in Figure 1 PCA
-dim(dds_invitro_subset<-dds_invitro[rownames(dds_invitro) %in% rownames(dds_gonad_subset),])
+#dim(dds_invitro_subset<-dds_invitro[rownames(dds_invitro) %in% rownames(dds_gonad_subset),])
+#plotPCA(normTransform(dds_invitro_subset),intgroup=c("gene","time"),ntop = Inf )+
+#  scale_color_manual(values = colors)+theme_bw()
 
-plotPCA(normTransform(dds_invitro_subset),intgroup=c("gene","time"),ntop = Inf )+
-  scale_color_manual(values = colors)+theme_bw()
+svglite::svglite(paste0("vitro_Dmrt1_expression_",ts,".svg"),width=5,height=3)
+gg_plotCounts("Dmrt1",d=dds_invitro,fpkm=T)
+dev.off()
 
+svglite::svglite(paste0("vitro_Sox9_expression_",ts,".svg"),width=5,height=3)
+gg_plotCounts("Sox9",d=dds_invitro,fpkm=T)
+dev.off()
 
-gg_plotCounts("Dmrt1",d=dds_invitro)
-gg_plotCounts("Sox9",d=dds_invitro)
+svglite::svglite(paste0("vitro_Plppr4_expression_",ts,".svg"),width=5,height=3)
+gg_plotCounts("Plppr4",d=dds_invitro,fpkm=T)
+dev.off()
+
 
 #gg_plotCounts("Cyp19a1",d=dds_invitro)
 #gg_plotCounts("Foxl2",d=dds_invitro)
@@ -80,13 +109,24 @@ write.table(temp[,c("ensembl","stat")],file="res_7d_full_sox9.rnk",sep="\t",quot
 
 ```
 
+
+# Run Command line version of GSEA
+```{r}
+
+#gsea-cli.sh GSEAPreranked -gmx /Users/gearh006/Documents/Notebook/GCD Consultant/zarkowe0/granulosa/somatic_gene_list.gmt -collapse No_Collapse -mode Max_probe -norm meandiv -nperm 1000 -rnk /Users/gearh006/Documents/Notebook/GCD Consultant/zarkowe0/granulosa/res_7d_full_dmrt1.rnk -scoring_scheme classic -rpt_label dmrt1 -create_svgs true -include_only_symbols true -make_sets true -plot_top_x 20 -rnd_seed timestamp -set_max 500 -set_min 15 -zip_report false -out /Users/gearh006/Documents/Notebook/GCD Consultant/zarkowe0/granulosa
+
+#gsea-cli.sh GSEAPreranked -gmx /Users/gearh006/Documents/Notebook/GCD Consultant/zarkowe0/granulosa/somatic_gene_list.gmt -collapse No_Collapse -mode Max_probe -norm meandiv -nperm 1000 -rnk /Users/gearh006/Documents/Notebook/GCD Consultant/zarkowe0/granulosa/res_7d_full_sox9.rnk -scoring_scheme classic -rpt_label sox9 -create_svgs true -include_only_symbols true -make_sets true -plot_top_x 20 -rnd_seed timestamp -set_max 500 -set_min 15 -zip_report false -out /Users/gearh006/Documents/Notebook/GCD Consultant/zarkowe0/granulosa
+
+```
+
 ## Panel D - Plppr4
 
 ```{r}
-as.data.frame(colData(dds_7dko<-dds[,!str_detect(colData(dds)$time,"ovary|testis") & str_detect(colData(dds)$time,"7d") ]))
+as.data.frame(colData(dds_7dko<-dds[,!str_detect(colData(dds)$time,"ovary|testis") & str_detect(colData(dds)$time,"7d|fresh" )  ]))
 
-gg_plotCounts("Plppr4",d=dds_invitro)
-gg_plotCounts7d("Plppr4",d=dds_7dko)
+svglite::svglite(paste0("vitro_Plppr4_expression_wKO_",ts,".svg"),width=5,height=7)
+gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE)
+dev.off()
 ```
 
 

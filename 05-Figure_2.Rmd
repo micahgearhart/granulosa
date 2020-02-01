@@ -76,6 +76,7 @@ Importantly, we confirmed that DMRT1 levels were similar in ovaries expressing t
 gg_sox("Dmrt1",d=dds_gonad)
 gg_sox("Defb36",d=dds_gonad)
 gg_sox("Foxl2",d=dds_gonad)
+gg_sox("Xist",d=dds_gonad)
 
 gg_sox("2810468N07Rik")
 gg_sox("ENSMUSG00000037469")
@@ -150,23 +151,24 @@ colors<-rev(colorRampPalette(brewer.pal(11,"RdBu"))(10))
 #plotPCA(normTransform(dds_gonad_subset),intgroup=c("time","gene","sox8","sox9"),ntop=Inf,returnData = F)
 
 #Use rlog for PCA
-dds_gonad_subset_rlog<-rlog(dds_gonad_subset,blind=T)
-figure_1a<-plotPCA(dds_gonad_subset_rlog,intgroup=c("time","gene","sox8","sox9"),ntop=Inf,returnData = T) %>% 
+#dds_gonad_subset_rlog<-rlog(dds_gonad_subset,blind=T)
+
+figure_4a<-plotPCA(normTransform(dds_gonad_subset),intgroup=c("time","gene","sox8","sox9"),ntop=Inf,returnData = T) %>% 
   mutate(group=factor(group,levels=c("ovary:control:2:2","ovary:control:0:0","ovary:dmrt1:0:0","ovary:dmrt1:0:1",
                                      "ovary:dmrt1:1:0","ovary:dmrt1:1:1","ovary:dmrt1:2:0",
                                      "ovary:dmrt1:2:2","testis:control:2:2"))) %>% 
-ggplot(aes(x=PC1,y=PC2,color=group)) + geom_point(size=8) +
-  xlim(c(-50,60)) + ylim(c(-60,30)) +
+  ggplot(aes(x=PC1,y=PC2,color=group)) + geom_point(size=10) +
+  #xlim(c(-50,60)) + ylim(c(-60,30)) +
   theme_bw() +  ggtitle("Gonad Data - Somatic Subset") +
-  geom_text(aes(label=ifelse( (sox8+sox9 < 4 | sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=PC1,y=PC2),size=3,color="black") +
-   scale_color_manual(values=c("magenta",colors[c(10,9,8,7,4,3,2)],"blue")) +
-  scale_x_reverse()
+  geom_text(aes(label=ifelse( (sox8+sox9 < 4 | sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=PC1,y=PC2),size=7,color="black") +
+   scale_color_manual(values=c("magenta",colors[c(10,9,8,7,4,3,2)],"blue")) 
+  
 
-figure_1a
+figure_4a
 
 #Paper Image
-svglite::svglite(paste0("somatic_gonad_PCA_",ts,".svg"),width=10,height=8)
-figure_1a
+svglite::svglite(paste0("somatic_gonad_PCA_",ts,".svg"),width=6,height=4.5)
+figure_4a
 dev.off()
 ```
 
@@ -202,7 +204,7 @@ head(left_join(tibble::rownames_to_column(nt.rot3,var="gene_id"),symbols,by="gen
 
 ```
 
-## Figure 1b - Venn Diagram
+## Figure 4C - Venn Diagram
 ```{r}
 
 # Compare Sox89 wt vs null as a categorial variable and look for an interaction term
@@ -234,24 +236,24 @@ vennplot <- draw.pairwise.venn(length(x1),length(y1),length(z1), c("Sox8/9 WT", 
 ```
 
 
-## Figure 1c 
+## Figure 4b  - example genes
 ```{r}
 
-gg_sox("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
-svglite::svglite(paste0("gonad_Defb36_expression_",ts,".svg"),width=4,height=3)
-gg_sox("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+svglite::svglite(paste0("gonad_Defb36_expression_",ts,".svg"),width=5,height=3)
+gg_sox_fpkm("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
 dev.off()
 
-gg_sox("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
 
-svglite::svglite(paste0("gonad_Foxl2_expression_",ts,".svg"),width=4,height=3)
-gg_sox("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+svglite::svglite(paste0("gonad_Foxl2_expression_",ts,".svg"),width=5,height=3)
+gg_sox_fpkm("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
 dev.off()
 
-gg_sox("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
 
-svglite::svglite(paste0("gonad_Dmrt1_expression_",ts,".svg"),width=4,height=3)
-gg_sox("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+svglite::svglite(paste0("gonad_Dmrt1_expression_",ts,".svg"),width=5,height=3)
+gg_sox_fpkm("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
 dev.off()
 
 nrow(temp<-f_gonad_mean[rownames(dds_gonad_subset),])
@@ -317,22 +319,97 @@ table(temp2$class <- case_when(
   TRUE ~ "blah"
 ))
 
+
 temp2$class<-factor(temp2$class, levels=c("Sox89 WT Only","Sox89 Null Only","Sox89 Independent"))
 rownames(temp2)<-symbols[match(rownames(temp2),symbols$gene_id),]$gene_name
 #rownames(temp)<-symbols[match(rownames(temp),symbols$gene_id),]$gene_name
 
 col_fun = circlize::colorRamp2(c(min(temp2[,1:4]),0, max(temp2[,1:4])), c("blue","white", "red"))
 
-H1<-Heatmap(temp2[,1:4], 
+H1<-Heatmap(as.matrix(temp2[,1:4]), 
         column_title = "Sox Dependent Sex Determination Genes", rect_gp = gpar(col = "black", lwd = 0.5),
-        cluster_rows = TRUE, cluster_columns=FALSE, split = temp2$class,
+        cluster_rows = TRUE, cluster_columns=FALSE, split = temp2$class,  
+        row_dend_reorder=temp2$`Cag-Dmrt1 Sox=4`,
+        row_names_gp = gpar(fontsize = 8), row_title_gp = gpar(fontsize = 10),
         row_names_side = "left",col = col_fun, show_heatmap_legend = TRUE)
+
+
 
 svglite::svglite(paste0("sox_dependent_sex_determination_",ts,".svg"),width=3,height=7)
 H1
 dev.off()
 
 #View(temp2)
+
+```
+
+#Impact on X Chromosome Genes in WT vs Sox9 Null
+```{r}
+#temp_wt<-subset(res_dds_ovary_wt, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50))
+#temp_null<-subset(res_dds_ovary_null, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50))
+
+temp<-dplyr::full_join(tibble::rownames_to_column(as.data.frame(res_dds_ovary_wt),var="Ensembl_ID"),
+                 tibble::rownames_to_column(as.data.frame(res_dds_ovary_null),var="Ensembl_ID"),by="Ensembl_ID",suffix=c(".wt",".null")) %>% 
+  filter((abs(log2FoldChange.wt) > 1 & padj.wt < 0.05 & baseMean.wt > 50 ) | (abs(log2FoldChange.null) > 1 & padj.null < 0.05 & baseMean.null > 50 ) ) 
+temp$symbol<-symbols[match(temp$Ensembl_ID,symbols$gene_id),"gene_name"]
+temp$chr<-symbols[match(temp$Ensembl_ID,symbols$gene_id),"chr"]
+
+temp %>% 
+  filter(chr=="X" | chr=="5" | chr=="1") %>% 
+  ggplot(aes(x=log2FoldChange.wt,y=log2FoldChange.null,color=chr)) + geom_point() +
+  xlim(c(-25,15)) + ylim(c(-25,15)) + theme_bw()
+
+#Null GSEA
+temp_res1 <-as.data.frame(res_dds_ovary_null[!is.na(res_dds_ovary_null$padj),])
+temp_res1$ENSEMBL<-rownames(temp_res1)
+temp_res1$CHR<-symbols[match(temp_res1$ENSEMBL,symbols$gene_id),"chr"]
+temp_res1<-temp_res1[temp_res1$CHR %in% c(1:19,"X"),]
+temp_res1$CHR<-factor(temp_res1$CHR,levels=c(1:19,"X"))
+#incm <- do.call( rbind, with(temp, tapply(ENSEMBL, CHR, function(x) CHR == temp[x,"CHR"] ) ))
+incm <- do.call( rbind, with(temp_res1, tapply(ENSEMBL, CHR, function(x) CHR == temp_res1[x,"CHR"] ) ))
+colnames(incm) <- temp_res1$ENSEMBL
+#str(incm)
+rowSums(incm)
+
+testCategory <- function( chr ) {
+isMember <- incm[ chr, ]
+data.frame(
+chr = chr,
+numGenes = sum( isMember ),
+avgLFC = mean( temp_res1$log2FoldChange[isMember] ),
+strength = sum( temp_res1$log2FoldChange[isMember] ) / sqrt(sum(isMember)),
+pvalue = t.test( temp_res1$log2FoldChange[ isMember ] )$p.value,
+CHR = chr) }
+
+(gsea_null<-do.call( rbind, lapply( rownames(incm), testCategory ) ))
+sum(gsea$numGenes)
+
+#WT GSEA
+temp_res2 <-as.data.frame(res_dds_ovary_wt[!is.na(res_dds_ovary_wt$padj),])
+temp_res2$ENSEMBL<-rownames(temp_res2)
+temp_res2$CHR<-symbols[match(temp_res2$ENSEMBL,symbols$gene_id),"chr"]
+temp_res2<-temp_res2[temp_res2$CHR %in% c(1:19,"X"),]
+temp_res2$CHR<-factor(temp_res2$CHR,levels=c(1:19,"X"))
+#incm <- do.call( rbind, with(temp, tapply(ENSEMBL, CHR, function(x) CHR == temp[x,"CHR"] ) ))
+incm <- do.call( rbind, with(temp_res2, tapply(ENSEMBL, CHR, function(x) CHR == temp_res2[x,"CHR"] ) ))
+colnames(incm) <- temp_res2$ENSEMBL
+#str(incm)
+rowSums(incm)
+
+testCategory <- function( chr ) {
+isMember <- incm[ chr, ]
+data.frame(
+chr = chr,
+numGenes = sum( isMember ),
+avgLFC = mean( temp_res2$log2FoldChange[isMember] ),
+strength = sum( temp_res2$log2FoldChange[isMember] ) / sqrt(sum(isMember)),
+pvalue = t.test( temp_res2$log2FoldChange[ isMember ] )$p.value,
+CHR = chr) }
+
+(gsea_wt<-do.call( rbind, lapply( rownames(incm), testCategory ) ))
+sum(gsea$numGenes)
+
+
 
 ```
 
@@ -601,13 +678,15 @@ g_dmrt1_sertoli<-rtracklayer::import("../data/covaris_6c_sertoli_dmrt1ChIP.R1.fa
 #                       selection=temp+width)
 #g_dmrt1_testis<-rtracklayer::import("../data/m8w_chip6_111223.dedup.unique.bigWig",
 #                       selection=temp+width)
-g_sox9_testis<-rtracklayer::import("../data/sox9_testis_idx512.dedup.unique.bigWig",
+g_sox9_testis<-rtracklayer::import("../data/sox9_testis_idx512_Tue_Jan_28_2020_1800.bigWig",
                        selection=temp+width)
 #Fresh ATAC
 #g_atac_sertoli<-rtracklayer::import("../data/N702.R1_trimmed.fastq.bigWig",selection=temp+with) #sertoli
 #g_atac_granulosa<-rtracklayer::import("../data/N704.R1_trimmed.fastq.bigWig",selection=temp+width) #granulosa
-g_atac_sertoli<-rtracklayer::import("../data/P7_Sertoli_Rep1.bigWig",selection=temp+width) #sertoli
-g_atac_granulosa<-rtracklayer::import("../data/Adult_Granulosa_Rep1.bigWig",selection=temp+width) #granulosa
+#g_atac_sertoli<-rtracklayer::import("../data/P7_Sertoli_Rep1.bigWig",selection=temp+width) #sertoli
+#g_atac_granulosa<-rtracklayer::import("../data/Adult_Granulosa_Rep1.bigWig",selection=temp+width) #granulosa
+g_atac_sertoli<-rtracklayer::import("../data/sertoli_fresh_ATACseqPE_GW052319_Tue_Jan_28_2020_1807.bigWig",selection=temp+width) #sertoli
+g_atac_granulosa<-rtracklayer::import("../data/granulosa_fresh_ATACseqPE_GW052319_Tue_Jan_28_2020_2208.bigWig",selection=temp+width) #granulosa
 
 
 #length(dmrt1_pwm<-rtracklayer::import("../data/dmrt1_invitro_pwm_score85.bed"))
@@ -650,30 +729,32 @@ col_fun_sox9_testis= colorRamp2(quantile(mat_sox9_testis, c(0, 0.99)), c("white"
 col_fun_atac_granulosa= colorRamp2(quantile(mat_atac_granulosa, c(0, 0.99)), c("white", "black"))
 col_fun_atac_sertoli= colorRamp2(quantile(mat_atac_sertoli, c(0, 0.99)), c("white", "black"))
 
-col=c("red","green","blue","white")
+#col=c("red","green","blue","white")
+col=cbPalette[c(6,7,4,1)]
+svglite::svglite(paste0("Figure4E_invivo_chip_heatmap_",ts,".svg"),width=8,height=7.5)
 EnrichedHeatmap(mat_atac_granulosa, col = col_fun_atac_granulosa, name = "atac granulosa",column_title = "atac granulsa",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,.75),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,1.2),yaxis = F)) ,use_raster=TRUE) +
 EnrichedHeatmap(mat_atac_sertoli, col = col_fun_atac_sertoli, name = "Atac sertoli",column_title = "atac sertoli",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,.75),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,2),yaxis = F)) ,use_raster=TRUE) +
 EnrichedHeatmap(mat_8w, col = col_fun_8w, name = "8w OvaryDmrt1",column_title = "8w Ovary Dmrt1",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,50),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,50),yaxis = F)) ,use_raster=TRUE) +
 EnrichedHeatmap(mat_sox9_ovary, col = col_fun_sox9_ovary, name = "8w OvarySox9",column_title = "8w Ovary Sox9",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,12),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.25,12),yaxis = F)) ,use_raster=TRUE) +
 EnrichedHeatmap(mat_dmrt1_sertoli, col = col_fun_dmrt1_sertoli, name = "p7 Sertoli Dmrt1",column_title = "p7 Sertoli Dmrt1",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,30),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,30),yaxis = F)),use_raster=TRUE ) +
 
 EnrichedHeatmap(mat_sox9_testis, col = col_fun_sox9_testis, name = "Adult Testis Sox9",column_title = "Adult Testis Sox9",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,5),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.02,0.12),yaxis = F)),use_raster=TRUE ) +
 
 EnrichedHeatmap(mat_a_pwm, col = c("white", "black"),pos_line=F, name = "Dmrt1 Sites", axis_name_rot = 90,column_title = "Dmrt1 Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE ) +
 #EnrichedHeatmap(mat_b_pwm, col = c("white", "black"),pos_line=F, name = "Klf4 PWM", axis_name_rot = 90,column_title = "KLF4 Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
 #                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
 EnrichedHeatmap(mat_b_pwm, col = c("white", "black"),pos_line=F, name = "Sox9 Sites", axis_name_rot = 90,column_title = "Sox9 Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) 
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE ) 
 #EnrichedHeatmap(mat_c_pwm, col = c("white", "black"),pos_line=F, name = "Group C PWM", axis_name_rot = 90,column_title = "Group C Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
 #               top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) 
-
+dev.off()
 
 
 

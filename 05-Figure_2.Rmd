@@ -144,7 +144,7 @@ dim(dds_gonad_subset<-dds_gonad[(rownames(dds_gonad) %in% rownames(results_soma)
 
 #as.data.frame(colData(dds_gonad_subset))
 
-colors<-rev(colorRampPalette(brewer.pal(11,"RdBu"))(10))
+colors_RdBu<-rev(colorRampPalette(brewer.pal(11,"RdBu"))(10))
 #plot(1:10,pch=16,col=colors,cex=4)
 
 
@@ -157,11 +157,11 @@ figure_4a<-plotPCA(normTransform(dds_gonad_subset),intgroup=c("time","gene","sox
   mutate(group=factor(group,levels=c("ovary:control:2:2","ovary:control:0:0","ovary:dmrt1:0:0","ovary:dmrt1:0:1",
                                      "ovary:dmrt1:1:0","ovary:dmrt1:1:1","ovary:dmrt1:2:0",
                                      "ovary:dmrt1:2:2","testis:control:2:2"))) %>% 
-  ggplot(aes(x=PC1,y=PC2,color=group)) + geom_point(size=10) +
+  ggplot(aes(x=PC1,y=PC2,fill=group)) + geom_point(size=10,shape=21) +
   #xlim(c(-50,60)) + ylim(c(-60,30)) +
   theme_bw() +  ggtitle("Gonad Data - Somatic Subset") +
-  geom_text(aes(label=ifelse( (sox8+sox9 < 4 | sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=PC1,y=PC2),size=7,color="black") +
-   scale_color_manual(values=c("magenta",colors[c(10,9,8,7,4,3,2)],"blue")) 
+  geom_text(aes(label=ifelse( (sox8+sox9 < 4 | sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=PC1,y=PC2),size=6,color="black") +
+   scale_fill_manual(values=c("magenta",colors_RdBu[c(10,9,8,7,4,3,2)],"blue")) 
   
 
 figure_4a

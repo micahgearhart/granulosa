@@ -356,7 +356,8 @@ rspo2_peaks[rspo2_peaks %over% sertoli_dmrt1]
 #phastcons
 #vivo_atac_subset<-add_mean_phastcons_score(vivo_atac_subset)
 
-#export(vivo_atac_subset,"vivo_atac_subset_gw070919.bed")
+table(vivo_atac_subset$class)
+export(vivo_atac_subset[vivo_atac_subset$class != "Constitutive"],paste0("vivo_atac_subset_",ts,".bed"))
 
 #Which ones overlap what sites?
 table(vivo_atac_subset$dmrt1<-vivo_atac_subset %over% sertoli_dmrt1)
@@ -431,6 +432,13 @@ ggplot(aes(x=lfc,y=(-1*log10(padj)),color=dimorph)) + geom_point() + theme_bw() 
   annotate("text",x=df$lfc,y=(-1*log10(df$padj)),label=df$genes)
 
 
+```
+
+# P-values for differentially ATACable regions in Figure 1
+```{r}
+as.data.frame(vivo_atac_subset[vivo_atac_subset %over% swl("chr2:148,651,621-148,909,512") & vivo_atac_subset$class!="Constitutive"])
+
+as.data.frame(vivo_atac_subset[vivo_atac_subset %over% swl("chr12:76,086,000-76,206,000") & vivo_atac_subset$class!="Constitutive"])
 ```
 
 

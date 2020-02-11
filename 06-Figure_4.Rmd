@@ -122,9 +122,16 @@ write.table(temp[,c("ensembl","stat")],file="res_7d_full_sox9.rnk",sep="\t",quot
 ## Panel D - Plppr4
 
 ```{r}
-as.data.frame(colData(dds_7dko<-dds[,!str_detect(colData(dds)$time,"ovary|testis") & str_detect(colData(dds)$time,"7d|fresh" )  ]))
+#as.data.frame(colData(dds_7dko<-dds[,!str_detect(colData(dds)$time,"ovary|testis") & str_detect(colData(dds)$time,"7d|fresh" )  ]))
+as.data.frame(colData(dds_7dko<-dds[,str_detect(colData(dds)$time,"7d|fresh" )| (str_detect(colData(dds)$time,"ovary") & str_detect(colData(dds)$gene,"S22_dmrt1|S00_dmrt1|S01_dmrt1") & !str_detect(colData(dds)$batch,"P006") )]))
 
-svglite::svglite(paste0("vitro_Plppr4_expression_wKO_",ts,".svg"),width=5,height=7)
+dds_7dko<-estimateSizeFactors(dds_7dko)
+gg_plotCounts7d("Dmrt1",d=dds_7dko,fpkm=TRUE)
+gg_plotCounts7d("Sox9",d=dds_7dko,fpkm=TRUE)
+gg_plotCounts7d("Sox8",d=dds_7dko,fpkm=TRUE)
+gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE)
+
+svglite::svglite(paste0("vitro_Plppr4_expression_wKO_",ts,".svg"),width=4.5,height=7)
 gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE)
 dev.off()
 ```

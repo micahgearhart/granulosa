@@ -171,15 +171,18 @@ gg_plotCounts7d<-function(x="ENSMUSG00000024837",d=dds_7d,fpkm=FALSE) {
     title<-x
     x<-symbols[grep(paste0("^",title,"$"),symbols$gene_name),"gene_id"]
   }
-
+  
+  colors_RdBu<-rev(colorRampPalette(brewer.pal(11,"RdBu"))(10))
+  colors<-c(cbPalette[6],cbPalette[8],c1d,c3d,c2d,cbPalette[5],cbPalette[7])
+  
   if(fpkm) {
-    colors<-c(cbPalette[8],cbPalette[6],c1d,c3d,c2d,cbPalette[5],cbPalette[7])
+
   return(data.frame(normalized_fpkm=fpkm(d)[x,],time=colData(d)$time,gene=colData(d)$gene) %>% 
   tidyr::unite(group,gene,time,sep=":",remove=F) %>% 
-  mutate(time=factor(time,levels=c("fresh","0h","24h","48h","7d"))) %>% 
-  mutate(group=factor(group,levels=c("control:fresh","sertoli:fresh",
+  mutate(time=factor(time,levels=c("fresh","ovary","0h","24h","48h","7d"))) %>% 
+  mutate(group=factor(group,levels=c("sertoli:fresh","control:fresh",
                                      "control:7d","dmrt1:7d","sox9:7d",
-                                     "S01_dmrt1:7d","S00_dmrt1:7d"
+                                     "S00_dmrt1:7d","S01_dmrt1:7d","S22_dmrt1:ovary","S00_dmrt1:ovary","S01_dmrt1:ovary"
                                      ))) %>% 
    mutate(time=as.character(time)) %>% 
    mutate(time = case_when(gene == "control" & time == "fresh" ~ "granulosa",
@@ -189,14 +192,14 @@ gg_plotCounts7d<-function(x="ENSMUSG00000024837",d=dds_7d,fpkm=FALSE) {
   #  mutate(gene = case_when(gene == "control" & time == "granulosa" ~ "granulosa",
   #                          gene == "sertoli" & time == "Sertoli" ~ "Sertoli",
   #                          TRUE ~ gene )) %>% 
-    mutate(time=factor(time,levels=c("granulosa","7d","Sertoli"))) %>%
+    mutate(time=factor(time,levels=c("granulosa","7d","Sertoli","ovary"))) %>%
   #  mutate(gene=factor(gene,levels=c("granulosa","control","sox9","dmrt1","Sertoli"))) %>% 
     ggplot(aes(x=group, y=normalized_fpkm,fill=group,shape=time)) +
     stat_summary(fun.y = mean, fun.ymin = mean, fun.ymax = mean,
-                 geom = "crossbar", width = 0.35,size=0.4,aes(colour=group)) + scale_color_manual(values=colors) +
+                 geom = "crossbar", width = 0.35,size=0.4,aes(colour=group)) + scale_color_manual(values=c(colors[c(1:5)],colors_RdBu[c(9,8,2,9,8)])) +
     geom_point(position=position_jitter(w=0.2,h=0),size=6) + ggtitle(title) +
     ylab("Normalized FPKM") + xlab("") + 
-    scale_fill_manual(values = colors)+  scale_shape_manual(values=c(21,24,21)) + #scale_colour_manual(values=c("black")) +
+    scale_fill_manual(values = c(colors[c(1:5)],colors_RdBu[c(9,8,2,9,8)])) +  scale_shape_manual(values=c(21,24,21,21)) + #scale_colour_manual(values=c("black")) +
    # scale_fill_manual(values=c("magenta","darkgray","darkgreen","#549EC9","blue")) + scale_colour_manual(values=c("black")) +
     expand_limits(x=0, y = 0) + theme_bw() + theme(legend.position = "none"))
   }

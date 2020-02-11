@@ -3,6 +3,7 @@ title: "Load Data"
 output: html_document
 editor_options: 
   chunk_output_type: console
+creative_commons: CC BY
 ---
 
 # Load Resources and Data

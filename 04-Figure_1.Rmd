@@ -3,6 +3,7 @@ title: "Load Data"
 output: html_document
 editor_options: 
   chunk_output_type: console
+creative_commons: CC BY
 ---
 # Figure 1
 
@@ -77,12 +78,12 @@ granulosa_transcripts<-transcripts[transcripts$gene_id %in% granulosa_up]
 nrow(temp<-as.data.frame(results_soma))
 
 #subset to significant genes (###use fpkm cutoff instead of baseMean?)
-nrow(results_soma<-subset(results_soma,abs(log2FoldChange) > 2 & padj < 0.05 & baseMean > 100 & (f_sertoli > 2.5 | f_granulosa > 2.5)))
+nrow(results_soma<-subset(results_soma,abs(log2FoldChange) > 2 & padj < 0.05 & (f_sertoli > 2.5 | f_granulosa > 2.5)))
 table(symbols[symbols$gene_id %in% rownames(results_soma),"chr"])
 
 table(temp$results_soma<- factor(case_when (
-  temp$log2FoldChange > 2 & temp$padj < 0.05 & temp$baseMean > 100 ~ "Sertoli",
-  temp$log2FoldChange < -2 & temp$padj < 0.05 & temp$baseMean > 100 ~ "Granulosa",
+  temp$log2FoldChange > 2 & temp$padj < 0.05 & temp$f_sertoli > 2.5 ~ "Sertoli",
+  temp$log2FoldChange < -2 & temp$padj < 0.05 & temp$f_granulosa > 2.5 ~ "Granulosa",
   TRUE ~ "unchanged"
   ),levels=c("Granulosa","unchanged","Sertoli")))
   
@@ -96,10 +97,9 @@ ggplot(aes(x=log2FoldChange,y=(-1*log10(padj)),color=results_soma)) + geom_point
   annotate("text",x=df$log2FoldChange,y=(-1*log10(df$padj)),label=df$mgi_symbol)
 dev.off()
 
-
 ```
 
-## Create a DDS object of the whole gonad samples
+## Create a DDS object of the whole gonad samples ****MOVE TO FIGURE 2 & Delte PCA
 ```{r }
 as.data.frame(colData(dds_gonad<-dds[,str_detect(colData(dds)$time,"ovary|testis") & !str_detect(colData(dds)$filename,"DMEf|WTf")]))
 colData(dds_gonad)$sox8<-as.numeric(substr(colData(dds_gonad)$gene,2,2))
@@ -120,10 +120,10 @@ plotPCA(normTransform(dds_gonad),intgroup=c("userid","time","gene","sox")) +
 #pheatmap(f_gonad_subset)
 ```
 
+# Figure 1B - In Vivo ATACseq
 
-
-## Figure 1a - UpsetR
-```{r upset,eval=T}
+## UpsetR comparison of ATACseq Peaklist
+```{r vivo_ATACseq_upsetR,eval=T}
 
 
 length(vivo_atac<-reduce(c(peak_e105_atac_XX,peak_e105_atac_XY,peak_e135_atac_XX,peak_e135_atac_XY,peak_p23_atac_XX,peak_p7_atac_XY)))
@@ -184,7 +184,7 @@ upset(as.data.frame(mcols(vivo_atac)), nsets = 4, number.angles = 30, point.size
 ### Map Genes to DARs
 ### Define g_regions and s_regions for DARs close to granulosa expressed genes and Sertoli expressed genes
 
-```{r}
+```{r in_vivo_DARs_DDS,eval=T}
 #Find Differentially bound ATAC-able regions
 
 #(fls1.vivo <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("/N70"))
@@ -235,8 +235,8 @@ as.data.frame(colData(atac_dds))
 
 ```
 
-## Make an  in vivo version of this PCA plot for Figure 1 (full version moved to figure 5)
-```{r}
+## Make an  in vivo version of this PCA plot for Figure 1 (full version moved to figure 7)
+```{r in_vivo_DARs_PCA,eval=T}
 as.data.frame(colData(vivo_dds<-atac_dds[,colData(atac_dds)$source=="vivo"]))
 
 
@@ -259,7 +259,7 @@ scale_color_manual(values = cbPalette[c(1:6)]) + geom_text(x=df$PC1,y=df$PC2,lab
 ```
 
 #Use contrast to find differentially atac-able regions between granulosa and Sertoli
-```{r}
+```{r in_vivo_DARs_DESeq,eval=T}
 f_atac_vivo <- fpkm(vivo_dds,robust=TRUE)
 
 f_mean_atac_vivo <- f_atac_vivo %>% as.data.frame() %>% 
@@ -281,23 +281,40 @@ colnames(f_mean_atac_vivo)<- colnames(f_mean_atac_vivo) %>%
   
 head(f_mean_atac_vivo)
 
-
-design(vivo_dds)<-~group
-vivo_dds$group<-droplevels(vivo_dds$group)
-vivo_dds<-DESeq(vivo_dds)
-
-summary(res_vivo_postnatal<-results(vivo_dds,contrast=c("group","postnatal_Male_vivo_na","postnatal_Female_vivo_na"),alpha=0.05))
-
-vivo_atac
 #Add metadata to vivo_atac gr
 stopifnot(all.equal(rownames(f_mean_atac_vivo),names(vivo_atac)))
 mcols(vivo_atac)<-f_mean_atac_vivo
 
-#design(vivo_dds)<-~sex
-#vivo_dds<-DESeq(vivo_dds)
-#vivo_res_raw<-results(vivo_dds,alpha=0.05)
-#vivo_res<-as.data.frame(vivo_res_raw)
-#vivo_res$ihw<-ihw(pvalue ~ baseMean,  data = vivo_res, alpha = 0.05)@df$adj_pvalue
+# Differential Expression
+design(vivo_dds)<-~group
+vivo_dds$group<-droplevels(vivo_dds$group)
+vivo_dds<-DESeq(vivo_dds)
+
+
+#e13.5
+summary(res_vivo_E135<-results(vivo_dds,contrast=c("group","E135_Male_vivo_na","E135_Female_vivo_na"),alpha=0.05))
+temp_E135<-vivo_atac
+stopifnot(all.equal(rownames(res_vivo_E135),names(temp_E135)))
+temp_E135$lfc<-round(res_vivo_E135$log2FoldChange,3)
+temp_E135$padj<-res_vivo_E135$padj
+#are they called in the Sert or Granulosa Datasets
+table(temp_E135$sert_call <- temp_E135 %over% peak_e135_atac_XY)
+table(temp_E135$gran_call <- temp_E135 %over% peak_e135_atac_XX)
+
+table(temp_E135$class<-case_when (
+  temp_E135$sert_call & temp_E135$padj < 0.05 & temp_E135$lfc > 1 & !temp_E135$gran_call ~ "Sertoli", #3.3,1 vs 4.3,2.8
+  temp_E135$gran_call & temp_E135$padj < 0.05 & temp_E135$lfc < -1 &  !temp_E135$sert_call ~ "Granulosa", # vs 2.8,4.3
+  abs(temp_E135$lfc) < log2(1.25) & temp_E135$sert_call & temp_E135$gran_call ~ "Constitutive",
+  TRUE ~ "unclassified"
+))
+
+volcano_E135<-mcols(temp_E135) %>% as.data.frame() %>% 
+  dplyr::filter(class != "unclassified") %>% 
+  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+ggplot(aes(x=lfc,y=(-1*log10(padj)),color=class)) + geom_point(size=0.75) + theme_bw()  +ggtitle("E135")
+  
+#postnatal
+summary(res_vivo_postnatal<-results(vivo_dds,contrast=c("group","postnatal_Male_vivo_na","postnatal_Female_vivo_na"),alpha=0.05))
 
 stopifnot(all.equal(rownames(res_vivo_postnatal),names(vivo_atac)))
 vivo_atac$lfc<-round(res_vivo_postnatal$log2FoldChange,3)
@@ -307,25 +324,26 @@ vivo_atac$padj<-res_vivo_postnatal$padj
 table(vivo_atac$sert_call <- vivo_atac %over% peak_p7_atac_XY)
 table(vivo_atac$gran_call <- vivo_atac %over% peak_p23_atac_XX)
 
-#vivo_atac$padj<-formatC(res_vivo_postnatal$padj, format = "e", digits = 3)
-#export(peak_p7_atac_XY,"peak_p7_atac_XY.bed")
-#export(peak_p23_atac_XX,"peak_p23_atac_XX.bed")
-
-## CHANGED THIS TO USE LOG2 OF THE MEAN INSTEAD OF UNTRANSFORMED INDIVIDUAL SAMPLES
-#classify
-#table(vivo_atac$class<-case_when (
-#  vivo_atac$padj < 0.05 & vivo_atac$postnatal_Male_vivo_na > 4 & vivo_atac$postnatal_Female_vivo_na < 1 ~ "Sertoli", #3.3,1 vs 4.3,2.8
-#  vivo_atac$padj < 0.05 & vivo_atac$postnatal_Male_vivo_na < 1 &  vivo_atac$postnatal_Female_vivo_na > 4 ~ "Granulosa", # vs 2.8,4.3
-#  abs(vivo_atac$lfc) < log2(1.25) & vivo_atac$postnatal_Male_vivo_na > 4  & vivo_atac$postnatal_Female_vivo_na > 4  ~ "Constitutive",
-#  TRUE ~ "unclassified"
-#))
-
 table(vivo_atac$class<-case_when (
   vivo_atac$sert_call & vivo_atac$padj < 0.05 & vivo_atac$lfc > 1 & !vivo_atac$gran_call ~ "Sertoli", #3.3,1 vs 4.3,2.8
   vivo_atac$gran_call & vivo_atac$padj < 0.05 & vivo_atac$lfc < -1 &  !vivo_atac$sert_call ~ "Granulosa", # vs 2.8,4.3
   abs(vivo_atac$lfc) < log2(1.25) & vivo_atac$sert_call & vivo_atac$gran_call ~ "Constitutive",
   TRUE ~ "unclassified"
 ))
+
+volcano_postnatal<-mcols(vivo_atac) %>% as.data.frame() %>% 
+  dplyr::filter(class != "unclassified") %>% 
+  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+ggplot(aes(x=lfc,y=(-1*log10(padj)),color=class)) + geom_point(size=0.75) + theme_bw()+ ggtitle("postnatal")
+
+grid.arrange(volcano_E135,volcano_postnatal,ncol=1)
+```
+
+
+## Add ChIP Overlap Data to vivo_atac
+
+```{r in_vivo_DARs_ChIP_overlap,eval=T}
+
 
 head(as.data.frame(vivo_atac))
 #View(as.data.frame(vivo_atac))
@@ -399,7 +417,14 @@ roi<-swl(c("chr6:119,522,263-119,531,826", # Wnt5b
 
 table(vivo_atac_subset$peak)
 vivo_atac_subset[!vivo_atac_subset$peak %in% c("D","DS","S","F","FE","E"),]$peak <- "N"
-table(vivo_atac_subset$peak)
+
+#Numbers for Text
+table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$peak)
+round(table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$peak)/sum(table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$peak)),2)
+
+table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)
+round(table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)/sum(table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)),2)
+
 
 #roi<-c("vivo_atac029963","vivo_atac075082","vivo_atac078850","vivo_atac036384","vivo_atac007173")
 #roi<-c("vivo_atac024838","vivo_atac061641","vivo_atac064754","vivo_atac005988","vivo_atac030065","vivo_atac081920")
@@ -442,7 +467,7 @@ as.data.frame(vivo_atac_subset[vivo_atac_subset %over% swl("chr12:76,086,000-76,
 ```
 
 
-## Use meme to identify motifs under Dmrt1, Foxl2 and Sox9 ChIP peaks
+## Use meme to identify motifs under Dmrt1, Foxl2 and Sox9 ChIP peaks   ****MOVE TO FIGURE 2
 ```{r}
 length(ovary_foxl2)
 length(testis_sox9)
@@ -465,7 +490,7 @@ export(sertoli_dmrt1_top.dna,"sertoli_dmrt1_top_sampled_151bp.fasta")
 
 ```
 
-#Import Meme on ChIPs
+#Import Meme on ChIPs  ****MOVE TO FIGURE 2
 ```{r}
 testis_sox9.meme<-TFBSTools:::parseMEMEOutput412("testis_sox9_151bp.txt")
 x<-lengths(testis_sox9.meme_dna<-relist(getSeq(readDNAStringSet("testis_sox9_151bp.fasta"),unlist(testis_sox9.meme$motifList)),testis_sox9.meme$motifList))
@@ -513,7 +538,7 @@ plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif,dm
 
 ```
 
-## what motif is under Sertoli DARs without Dmrt1/Sox9 motifs
+## what motif is under Sertoli DARs without Dmrt1/Sox9 motifs  ****MOVE TO FIGURE 2
 ```{r}
 
 # Dmrt
@@ -653,7 +678,6 @@ ggdraw(plot_grid(plot_grid(g2 + theme(legend.position = "none"), g1 + theme(lege
 
 # Figure 1C - Distance to Sert,Gran Genes
 ```{r}
-
 s<-distanceToNearest(vivo_atac_subset,sertoli_transcripts,ignore.strand=TRUE)
 stopifnot(all.equal(queryHits(s),1:length(vivo_atac_subset)))  
 vivo_atac_subset$sertoli_distance<- NA 
@@ -675,7 +699,7 @@ vivo_atac_subset[queryHits(g)]$nearest_granulosa_gene_id<-granulosa_transcripts[
 head(vivo_atac_subset)
 
 
-#FIGURE 1B  - Distance to dimorphic Genetable
+#FIGURE 1C  - Distance to dimorphic Genetable
 temp<-vivo_atac_subset
 cutoff<-c(5000,100000)
 table(temp$close_to<-case_when (
@@ -690,6 +714,10 @@ table(temp$close_to<-case_when (
 ))
 
 temp[temp$close_to=="both_short"]
+
+#Numbers for paper
+table(temp[temp$class=="Sertoli"]$close_to)
+table(temp[temp$class=="Granulosa"]$close_to)
 
 g1<- mcols(temp) %>% as.data.frame() %>% 
   dplyr::filter(close_to=="sert_short" | close_to=="gran_short") %>% 
@@ -711,10 +739,45 @@ svglite::svglite(paste0("somatic_atac_degs_",ts,".svg"),width=3,height=4)
 grid.arrange(g2,g1,ncol=1)
 dev.off()
 
+
+#how many genes go up vs dn near Sertoli Specfic genes
+length(temp_close_to_Sertoli_DARs<-temp[temp$class=="Sertoli" & (temp$close_to=="sert_short" | temp$close_to=="gran_short")])
+length(unique(subset(temp_close_to_Sertoli_DARs,close_to=="gran_short")$nearest_granulosa_symbol))
+length(unique(subset(temp_close_to_Sertoli_DARs,close_to=="sert_short")$nearest_sertoli_symbol))
+
+length(temp_close_to_granulosa_DARs<-temp[temp$class=="Granulosa" & (temp$close_to=="sert_short" | temp$close_to=="gran_short")])
+length(unique(subset(temp_close_to_granulosa_DARs,close_to=="gran_short")$nearest_granulosa_symbol))
+length(unique(subset(temp_close_to_granulosa_DARs,close_to=="sert_short")$nearest_sertoli_symbol))
+
+#how many dense clusters are there?
+sertoli_DAR_density<-distanceToNearest(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"],ignore.strand=TRUE)
+mean(mcols(sertoli_DAR_density)$distance)
+sum(seqlengths(mm10))/length(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"])
+hist(mcols(sertoli_DAR_density)$distance,n=10000,xlim=c(0,100000))
+
+granulosa_DAR_density<-distanceToNearest(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"],ignore.strand=TRUE)
+mean(mcols(granulosa_DAR_density)$distance)
+sum(seqlengths(mm10))/length(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"])
+hist(mcols(granulosa_DAR_density)$distance,n=10000,xlim=c(0,100000))
+
+
 ```
 
-### make Enriched Heatmap plots of Differentially ATAC-able regions
-```{r}
+## Determine what fraction of peaks are clustered
+```{r cluster_fraction,eval=F}
+length(temp_s<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli"])
+#length(gr_cst<-vivo_atac_subset[vivo_atac_subset %over% swl("chr2:148,651,621-148,909,512") & vivo_atac_subset$class!="Constitutive"])
+#length(gr_er<-vivo_atac_subset[vivo_atac_subset %over% swl("chr12:76,086,000-76,206,000") & vivo_atac_subset$class!="Constitutive"])
+#temp_s$density<-NA
+#system.time(for (i in seq_along(1:length(temp_s))) {temp_s[i]$density<-countOverlaps(peak_center(temp_s[i])+125000,temp_s)})
+
+summary(temp_s$density)
+sum(temp_s$density > 8)
+as.data.frame(temp_s[temp_s$density > 8])
+```
+
+# Heatmap of ChIP and ATAC Peaks and Motifs  ****Move to FIGURE 3
+```{r figure3_heatmap_setup,eval=T}
 cutoff<-1000
 
 #add fpkm for both gehes
@@ -748,13 +811,15 @@ t_regions<-c(g_regions,s_regions)
 t_regions<-t_regions[!t_regions %in% g_regions[g_regions %over% s_regions]]
 
 length(t_regions)
+table(t_regions$deg)
 #View(as.data.frame((t_regions)))
 head(sort(table(s_regions$nearest_sertoli_symbol),decreasing = TRUE),20)
 head(sort(table(g_regions$nearest_granulosa_symbol),decreasing = TRUE),20)
 
 ```
 
-```{r}
+# Heatmap of ChIP and ATAC Peaks and Motifs  ****Move to FIGURE 3
+```{r figure3_heatmap,eval=T}
 
 temp_1<-t_regions
 temp_1<-temp_1[temp_1$class!="Granulosa"]  #only constitutive and Sertoli
@@ -769,7 +834,8 @@ df<-data.frame(gran=temp_1$gran_fpkm,sert=temp_1$sert_fpkm,stat=temp_1$stat)
   
 g_atac_dmrt1<-rtracklayer::import("../data/fresh_sertoli_noMT_dedup_unique_merge.bigWig",selection=temp_2+2000) #sertoli
 g_atac_control<-rtracklayer::import("../data/fresh_gran_noMT_dedup_unique_merge.bigWig",selection=temp_2+2000) #granulosa
-g_p2<-rtracklayer::import("../data/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.bigWig",selection=temp_2+2000)
+#g_p2<-rtracklayer::import("../data/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.bigWig",selection=temp_2+2000)
+g_p2<-rtracklayer::import("../data/sox9_testis_idx512_Tue_Jan_28_2020_1800.bigWig",selection=temp_2+2000)
 #g_p3<-rtracklayer::import("../data/ovaryav574_CAGATC.dedup.unique.bigWig",selection=temp_2+2000)
 
 g_p4<-rtracklayer::import("../data/k27ac_noCre.dedup.unique.bigWig",selection=temp_2+2000)
@@ -824,38 +890,39 @@ col_fun_df=colorRamp2(c(min(c(df$gran,df$sert)),2.5,max(c(df$gran,df$sert))),c("
 #mysplit<-ifelse(temp$is.sig,"DeNovo","PreExisting")
 #mysplit<-ifelse(g_regions$class,"DeNovo","PreExisting")
 
-
-col=cbPalette[c(3,5,7,4,6,8)]
 #col=c("red","green","blue")
+#col=cbPalette[c(3,5,7,4,6,8)]
+col=cbPalette[c(6,7,4,1)]
   dmrt1_order<-row_order(  EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "dmrt1",column_title = "Dmrt1 (Sertoli)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
                   top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,18),yaxis = F)) ))
     
-svglite::svglite(paste0("Figure3_invivo_heatmap_legends_",ts,".svg"),width=6,height=7.5)
-Heatmap(df$gran,name="FPKM Gran",col=col_fun_df, column_title = "Granulosa Expr",show_heatmap_legend = TRUE,column_title_rot=90,split=temp_1$class,width=20,row_order = as.integer(unlist(dmrt1_order)),cluster_rows = FALSE) + 
-Heatmap(df$sert,name="FPKM Sert",col=col_fun_df, column_title = "Sertoli Expr",show_heatmap_legend = FALSE,column_title_rot=90,split=temp_1$class,width=20)  +
+#svglite::svglite(paste0("Figure3_invivo_heatmap_legends_",ts,".svg"),width=6,height=7.5)
+pdf(paste0("Figure3_invivo_heatmap_legends_",ts,".pdf"),width=6,height=7.5)
+Heatmap(df$gran,name="FPKM Gran",col=col_fun_df, column_title = "Granulosa Expr",show_heatmap_legend = TRUE,column_title_rot=90,split=temp_1$class,width=20,row_order = as.integer(unlist(dmrt1_order)),cluster_rows = FALSE,use_raster=TRUE, raster_device="png", raster_quality=10) + 
+Heatmap(df$sert,name="FPKM Sert",col=col_fun_df, column_title = "Sertoli Expr",show_heatmap_legend = FALSE,column_title_rot=90,split=temp_1$class,width=20,use_raster=TRUE, raster_device="png", raster_quality=10)  +
   
 EnrichedHeatmap(mat_ac, col = col_fun_ac, name = "atac_control",column_title = "Granulosa",axis_name_rot = 90,split=temp_1$class,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
-              top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,13),yaxis = F)),use_raster=TRUE) +
+              top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,13),yaxis = F)),use_raster=TRUE, raster_device="png",raster_quality=10) +
 EnrichedHeatmap(mat_ad, col = col_fun_ad, name = "atac_dmrt1",column_title = "Sertoli",axis_name_rot = 90,split=temp_1$class,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,25),yaxis = F)),use_raster=TRUE ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,25),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10) +
 EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "dmrt1",column_title = "Dmrt1 (Sertoli)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,9),yaxis = F)),use_raster=TRUE ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,9),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
 EnrichedHeatmap(mat_p2, col = col_fun_p2, name = "Sox9",column_title = "Sox9 (Sertoli)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.2,0.8),yaxis = F)),use_raster=TRUE ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.02,0.055),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
 #EnrichedHeatmap(mat_p3, col = col_fun_p3, name = "Foxl2",column_title = "Foxl2 (Ovary)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
 #                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,1.5),yaxis = F)) ) +
 EnrichedHeatmap(mat_p4, col = col_fun_p4, name = "k27nc",column_title = "k27 noCRE",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,10),yaxis = F)),use_raster=TRUE ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,10),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
 EnrichedHeatmap(mat_p5, col = col_fun_p5, name = "k27dhh",column_title = "k27 dHHCRE",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,8),yaxis = F)),use_raster=TRUE ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,8),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
 EnrichedHeatmap(mat_dmrt1, col = c("white", "darkblue"),pos_line=F, name = "dmrt1_sites", axis_name_rot = 90,column_title = "Dmrt1 Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
 EnrichedHeatmap(mat_sox9, col = c("white", "darkgreen"),pos_line=F, name = "sox9_sites", axis_name_rot = 90,column_title = "Sox9 Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE ) +
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
 #EnrichedHeatmap(mat_sox9_open, col = c("white", "darkgreen"),pos_line=F, name = "group_c_sites", axis_name_rot = 90,column_title = "group c Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
 #                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
 EnrichedHeatmap(mat_tea, col = c("white", "darkblue"),pos_line=F, name = "tea_sites", axis_name_rot = 90,column_title = "TEA Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE ) 
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) 
 dev.off()
     
 #EnrichedHeatmap(mat_foxl2, col = c("white", "magenta"),pos_line=F, name = "foxl2_sites", axis_name_rot = 90,column_title = "Foxl2 Motifs",split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
@@ -874,7 +941,7 @@ dev.off()
 ```
 
 ## Heatmap for Chromatin Only
-```{r}
+```{r chromatin_only_heatmap,eval=F}
 seqlevelsStyle(temp_2)<-"NCBI"
 g_p1<-rtracklayer::import("../data/input_noCre.dedup.unique.bigWig",selection=temp_2+2000)
 g_p2<-rtracklayer::import("../data/input_dhhCre.dedup.unique.bigWig",selection=temp_2+2000)
@@ -939,8 +1006,8 @@ EnrichedHeatmap(mat_p10, col = col_fun_p10, name = "k27me3_dhhCre",column_title 
 
 ```
 
-# Tn5 footprinting
-```{r}
+# Tn5 footprinting **** DELETE?
+```{r tn5_footprinting,eval=FALSE}
 bamfile<-"../data/sertoli_fresh_ATAC_rep1_N704_GW052319.dedup.unique.noMT.bam"
 bamfile.labels <- gsub(".bam", "", basename(bamfile))
 seqlevelsStyle(Mmusculus)<-"NCBI"

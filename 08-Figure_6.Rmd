@@ -1,0 +1,12 @@
+---
+title: "Figure 6 - In Vitro Differentiation"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+creative_commons: CC BY
+---
+
+```{r}
+
+```
+

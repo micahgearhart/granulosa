@@ -3,6 +3,7 @@ title: "Figure 4 In Vitro Analysis"
 output: html_document
 editor_options: 
   chunk_output_type: console
+creative_commons: CC BY
 ---
 
 

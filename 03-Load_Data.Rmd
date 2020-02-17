@@ -113,7 +113,7 @@ plotPCA(normTransform(dds),intgroup=c("time")) + theme_bw() + ggtitle("PCA on Al
 
 
 ## Motifs
-```{r}
+```{r import_motifs,eval=T}
 
 length(dmrt1_pwm<-rtracklayer::import("../data/dmrt1_invitro_pwm_score85.bed"))
 seqlevelsStyle(dmrt1_pwm)<-"NCBI"
@@ -157,7 +157,7 @@ tead2_jaspar_motif<-new("pfm",mat=t(t(tead2_pfm[1:4,])*1/colSums(tead2_pfm[1:4,]
 ```
 
 ## Load ChIP & ATAC Peaklists
-```{r}
+```{r load_ChIP_ATAC_peaklist,eval=T}
 #For Figure 1E
 length(ovary8w_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary82_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))
 length(ovary_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary8w_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.macs_peaks.narrowPeak")))
@@ -231,8 +231,11 @@ length(ovary_foxl2<-narrowPeakToGRanges("../data/foxl2ChIP_wt_ovary_070519g_peak
 length(ovary_foxl2<-ovary_foxl2[!ovary_foxl2 %over% bl_mm10])
 length(ovary_esr2<-narrowPeakToGRanges("../data/ESR22_GCCAAT_042319_peaks.narrowPeak"))
 length(ovary_esr2<-ovary_esr2[!ovary_esr2 %over% bl_mm10])
-length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.macs_peaks.narrowPeak")))
+#length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.macs_peaks.narrowPeak")))
+length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_testis_idx512.dedup.unique.noMT.macs_peaks.narrowPeak")))
+
 ## ADD ESR2!
+
 
 # In Vitro ATAC-Seq (Figure 5D)
 #length(vitro_atac_control2<-broadPeakToGRanges("../data/control2.macs_peaks.broadPeak"))
@@ -242,7 +245,7 @@ length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox
 
 
 ## Load In Vitro data
-```{r}
+```{r load_invitro_data,eval=T}
 
 length(peak_vitro_atac_cagSox9control_rep1<-broadPeakToGRanges("../data/gran_7d_cagSox9_noCRE_ATAC_rep1_N707_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
 length(peak_vitro_atac_cagSox9control_rep2<-broadPeakToGRanges("../data/gran_7d_cagSox9_noCRE_ATAC_rep2_N708_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
@@ -283,8 +286,6 @@ length(peak_vitro_atac_cagDmrt1<-peak_vitro_atac_cagDmrt1[peak_vitro_atac_cagDmr
                                                peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep2 &
                                                peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep3 &
                                                !peak_vitro_atac_cagDmrt1 %over% bl_mm10])
-
-
 
 #In vitro ChIP
  length(gran_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/granulosa_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))

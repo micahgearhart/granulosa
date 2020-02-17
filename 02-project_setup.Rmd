@@ -2,6 +2,7 @@
 output: html_document
 editor_options: 
   chunk_output_type: console
+creative_commons: CC BY
 ---
 # Setup
 ```{r libraries,eval=T,results='hide',message=FALSE,warning=FALSE}

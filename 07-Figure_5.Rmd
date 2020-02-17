@@ -3,40 +3,13 @@ title: "Figure 5"
 output: html_document
 editor_options: 
   chunk_output_type: console
+creative_commons: CC BY
 ---
 
 # Figure 5
 
 ## Panel A - In vitro ATAC-seq
-```{r}
 
-plotPCA(normTransform(atac_dds),intgroup=c("sex","age","cag","source"),returnData=F,ntop=500)
-
-(df<-plotPCA(normTransform(atac_dds),intgroup=c("sex","age","cag","source"),returnData=T,ntop=500))
-
-
-
-
- colors_atac<-c(cbPalette[c(8,8,6,6,8,6)],c1d,c3d,c2d)
- shape_atac<-c(23,22,23,22,21,21,24,24,24)
-
-figure_7a<-df %>% 
-  mutate(group=factor(group,levels=c("Female:E105:na:vivo","Female:E135:na:vivo","Male:E105:na:vivo","Male:E135:na:vivo",
-                                     "Female:postnatal:na:vivo","Male:postnatal:na:vivo",
-                                     "Female:postnatal:na:vitro","Female:postnatal:Dmrt1:vitro","Female:postnatal:Sox9:vitro")) ) %>% 
-  ggplot(aes(x=PC1,y=PC2,fill=group,shape=group)) + geom_point(size=8) +
- # xlim(c(-45,60)) + ylim(c(-100,40)) +
-  ggtitle("In Vitro Data") +
-scale_shape_manual(values=shape_atac) +   scale_fill_manual(values = colors_atac) + 
-  theme_bw() + theme(legend.position = "none") # + geom_text(x=df$PC1,y=df$PC2,label=df$group)
-
-svglite::svglite(paste0("Figure7a_atac_PCA_",ts,".svg"),width=5,height=4.5)
-figure_7a
-dev.off()
-
-#plotPCA(normTransform(atac_dds),intgroup=c("group"),ntop=500) + theme_bw() +
-#  scale_color_manual(values = c(cbPalette,"black")) + geom_text(x=df$PC1,y=df$PC2,label=df$group) 
-```
 
 
 
@@ -224,31 +197,7 @@ plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,vitro_subset_sox9_mo
 
 ## Hypothesis:  Sox9 can only go to open regions
 
-```{r}
 
-
-# does sox9 look the same in both cag-sox9 and cag-dmrt1 
-svglite::svglite(paste0("Figure7c_Vitro_ChIP_Venn_",ts,".svg"),width=5,height=4.5)
-grid.newpage()
-VennDiagram::draw.triple.venn(area1=length(gran_ctvsox9_sox9),
-                              area2=length(gran_ctvdmrt1_sox9),
-                              area3=length(gran_ctvdmrt1_dmrt1),
-                              n12=sum(gran_ctvsox9_sox9 %over% gran_ctvdmrt1_sox9),
-                              n13=sum(gran_ctvsox9_sox9 %over% gran_ctvdmrt1_dmrt1),
-                              n23=sum(gran_ctvdmrt1_sox9 %over% gran_ctvdmrt1_dmrt1),
-                              n123=sum(gran_ctvsox9_sox9[gran_ctvsox9_sox9 %over% gran_ctvdmrt1_sox9] %over% gran_ctvdmrt1_dmrt1),
-                              fill=c(c2d,c2d,c3d),
-                            #  fill=c("#F8766D","#00BFC4","#7CAE00"),
-                            #  cat.pos=c(30,150,270),
-                               rotation.degree=270,
-                              category=c("Sox9 ChIP Peaks in cagSox9","Sox9 ChIP Peaks in cagDmrt1","Dmrt1 ChIP Peaks in cagDmrt1"))
-
-dev.off()
-
-# Sample peaks from the top of each in vitro chIP experiment
-
-
-```
 
 ## IGVsnapshot
 chr3:117,312,672-117,333,383  #Plppr4

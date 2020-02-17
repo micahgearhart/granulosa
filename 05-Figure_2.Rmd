@@ -3,6 +3,7 @@ title: "Figure 2"
 output: html_document
 editor_options: 
   chunk_output_type: console
+creative_commons: CC BY
 ---
 
 
@@ -433,10 +434,9 @@ length(ovary_ctvdmrt1_sox9_top<-ovary_ctvdmrt1_sox9[ovary_ctvdmrt1_sox9$score > 
 
 
 #venn version of peaks
-length(temp<-ovary_ctvdmrt1_sox9[ovary_ctvdmrt1_sox9 %over% ovary8w_ctvdmrt1_dmrt1])
-grid.newpage()
-vennplot <- draw.pairwise.venn(length(ovary8w_ctvdmrt1_dmrt1),length(ovary_ctvdmrt1_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1", "ovary_ctvdmrt1_sox9"))
-
+#length(temp<-ovary_ctvdmrt1_sox9[ovary_ctvdmrt1_sox9 %over% ovary8w_ctvdmrt1_dmrt1])
+#grid.newpage()
+#vennplot <- draw.pairwise.venn(length(ovary8w_ctvdmrt1_dmrt1),length(ovary_ctvdmrt1_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1", "ovary_ctvdmrt1_sox9"))
 
 #clean up peak list for plot
 #length(temp_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1_top[!ovary8w_ctvdmrt1_dmrt1_top %over% rmsk],value=c(1:19,"X"),pruning.mode = "coarse"))
@@ -448,18 +448,18 @@ length(temp_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1_top[!ovary8w_ctvdmrt1_dm
 length(temp_sox9<-keepSeqlevels(ovary_ctvdmrt1_sox9_top[!ovary_ctvdmrt1_sox9_top %over% bl_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
 
 #new venn
-length(temp<-temp_sox9[temp_sox9 %over% temp_dmrt1])
-grid.newpage()
-vennplot <- draw.pairwise.venn(length(temp_dmrt1),length(temp_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1_top", "ovary_ctvdmrt1_sox9_top"))
+#length(temp<-temp_sox9[temp_sox9 %over% temp_dmrt1])
+#grid.newpage()
+#vennplot <- draw.pairwise.venn(length(temp_dmrt1),length(temp_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1_top", "ovary_ctvdmrt1_sox9_top"))
 
-#TEST- Focus on differentially ATAC-able
+#Focus on differentially ATAC-able
 length(temp_dmrt1<-temp_dmrt1[temp_dmrt1 %over% vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]])
 length(temp_sox9<-temp_sox9[temp_sox9 %over% vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]])
 
   #new venn
-length(temp<-temp_sox9[temp_sox9 %over% temp_dmrt1])
-grid.newpage()
-vennplot <- draw.pairwise.venn(length(temp_dmrt1),length(temp_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1_top", "ovary_ctvdmrt1_sox9_top"))
+#length(temp<-temp_sox9[temp_sox9 %over% temp_dmrt1])
+#grid.newpage()
+#vennplot <- draw.pairwise.venn(length(temp_dmrt1),length(temp_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1_top", "ovary_ctvdmrt1_sox9_top"))
 ```
 
 

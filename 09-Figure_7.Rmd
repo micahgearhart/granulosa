@@ -8,13 +8,11 @@ creative_commons: CC BY
 
 # Figure 7A - ATAC PCA  (this pca relies on atac_dds from 50bp data)
 
-```{r}
+```{r atac_pca_all_samples,eval=T}
 dim(atac_dds)
 plotPCA(normTransform(atac_dds),intgroup=c("sex","age","cag","source"),returnData=F,ntop=500)
 
 (df<-plotPCA(normTransform(atac_dds),intgroup=c("sex","age","cag","source"),returnData=T,ntop=500))
-
-
 
 
  colors_atac<-c(cbPalette[c(8,8,6,6,8,6)],c1d,c3d,c2d)
@@ -182,7 +180,7 @@ mcols(vitro_atac) %>% as.data.frame() %>%
 
 
 # Figure 7C - Venn Diagram on ChIP list
-```{r}
+```{r in_vitro_ChIP_Venn,eval=T}
 
 # does sox9 look the same in both cag-sox9 and cag-dmrt1 
 svglite::svglite(paste0("Figure7c_Vitro_ChIP_Venn_",ts,".svg"),width=5,height=4.5)
@@ -208,12 +206,13 @@ dev.off()
 ```
 
 # Figure 7D - Add ChIP to see if SOX9 binding is DMRT1 dependent
-```{r}
+```{r in_vitro_heatmap,eval=T}
 
 length(temp<-vitro_atac[(vitro_atac$class=="DMRT1 DAR - UP" | vitro_atac$class=="COMMON DAR - UP" | vitro_atac$class=="SOX9 DAR - UP" ) & vitro_atac$Sertoli_specific])
-length(temp[temp %over% gran_ctvdmrt1_dmrt1])
-length(temp[temp %over% gran_ctvsox9_sox9])
-length(temp[temp %over% gran_ctvdmrt1_sox9])
+length(temp$chip_ctvdmrt1_DMRT1 <-temp %over% gran_ctvdmrt1_dmrt1)
+length(temp$chip_ctvdmrt1_SOX9 <-temp %over% gran_ctvdmrt1_sox9)
+length(temp$chip_ctvsox9_SOX9 <-temp %over% gran_ctvsox9_sox9)
+
 
 length(temp_con<-vitro_atac[vitro_atac$class=="Constitutive" &
                                    vitro_atac$b2_Dmrt1 > 5 & vitro_atac$b2_Dmrt1 < 8 &
@@ -223,29 +222,76 @@ length(temp_con<-vitro_atac[vitro_atac$class=="Constitutive" &
 length(temp_con<-temp_con[!(temp_con %over% gran_ctvdmrt1_dmrt1 | temp_con %over% gran_ctvsox9_sox9 | temp_con %over% gran_ctvdmrt1_sox9 )])
 temp<-c(temp,temp_con)
 
-data.frame(sort(table(temp$sox_binding <-case_when (
-  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9 ~ "Dmrt1-Dependent Sox9",
-  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 w/ Constitutive Sox9",
-    temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 cagDmrt1 or Sox9 in cagSox9",
-  temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "Dmrt1 w/o Sox9",
-  !temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "No Dmrt1 or Sox9",
-  !temp %over% gran_ctvdmrt1_dmrt1 & (temp %over% gran_ctvdmrt1_sox9 | temp %over% gran_ctvsox9_sox9)  ~ "Sox9 w/o Dmrt1",
+#(temp$sox_binding <-case_when (
+#  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9 ~ "Dmrt1-Dependent Sox9",
+#  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 w/ Constitutive Sox9",
+#    temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 cagDmrt1 or Sox9 in cagSox9",
+#  temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "Dmrt1 w/o Sox9",
+#  !temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "No Dmrt1 or Sox9",
+#  !temp %over% gran_ctvdmrt1_dmrt1 & (temp %over% gran_ctvdmrt1_sox9 | temp %over% gran_ctvsox9_sox9)  ~ "Sox9 w/o Dmrt1",
+#  TRUE ~ "unclassified"
+#))
+
+temp$sox_binding <-case_when (
+  temp$class=="SOX9 DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & temp$chip_ctvsox9_SOX9 ~ "SOX9 DAR  - SOX9 Pioneering site",
+  temp$class=="SOX9 DAR - UP" & !temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & temp$chip_ctvsox9_SOX9 ~ "SOX9 DAR - SOX9 Pioneering site",
+  temp$class=="SOX9 DAR - UP" & !temp$chip_ctvdmrt1_DMRT1 & !temp$chip_ctvdmrt1_SOX9 & !temp$chip_ctvsox9_SOX9 ~ "SOX9 DAR - SOX9 Pioneering site - No SOX9 No DMRT1",
+  temp$class=="SOX9 DAR - UP" & !temp$chip_ctvdmrt1_DMRT1 & !temp$chip_ctvdmrt1_SOX9 & temp$chip_ctvsox9_SOX9 ~ "SOX9 DAR - SOX9 Pioneering site - SOX9 ONLY",
+  temp$class=="SOX9 DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & !temp$chip_ctvsox9_SOX9 ~ "SOX9 DAR - only bound in cagdmrt1",
+  temp$class=="COMMON DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & temp$chip_ctvsox9_SOX9 ~ "COMMON DAR - DMRT1 Pioneering site - w SOX9",
+  temp$class=="COMMON DAR - UP" & !temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & temp$chip_ctvsox9_SOX9 ~ "COMMON DAR - SOX9 Pioneering site",
+  temp$class=="COMMON DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & !temp$chip_ctvsox9_SOX9 ~ "COMMON DAR - DMRT1 Pioneering site - No SOX9",
+  temp$class=="DMRT1 DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & !temp$chip_ctvsox9_SOX9 ~ "DMRT1 DAR - Dmrt1-Dependent Sox9",
+  temp$class=="DMRT1 DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & temp$chip_ctvdmrt1_SOX9 & temp$chip_ctvsox9_SOX9 ~ "DMRT1 DAR - Dmrt1 w/ Constitutive Sox9",
+  temp$class=="DMRT1 DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & !temp$chip_ctvdmrt1_SOX9 & temp$chip_ctvsox9_SOX9 ~ "DMRT1 DAR - Dmrt1 cagDmrt1 or Sox9 in cagSox9",
+  temp$class=="DMRT1 DAR - UP" & temp$chip_ctvdmrt1_DMRT1 & !temp$chip_ctvdmrt1_SOX9 & !temp$chip_ctvsox9_SOX9 ~ "DMRT1 DAR - Dmrt1 w/o Sox9",
+  temp$class=="DMRT1 DAR - UP" & !temp$chip_ctvdmrt1_DMRT1 & !temp$chip_ctvdmrt1_SOX9 & !temp$chip_ctvsox9_SOX9  ~ "DMRT1 DAR - No Dmrt1 or Sox9",
+  temp$class=="DMRT1 DAR - UP" & !temp$chip_ctvdmrt1_DMRT1 & ( temp$chip_ctvdmrt1_SOX9 | temp$chip_ctvsox9_SOX9) ~ "DMRT1 DAR - Sox9 w/o Dmrt1",
   TRUE ~ "unclassified"
-))))
-
-
+)
 table(temp[temp$class=="Constitutive"]$sox_binding<-"Constitutive Control")
+data.frame(sort(table(temp$sox_binding,useNA="always"),decreasing=T))
 
-length(temp<-temp[temp$sox_binding=="Dmrt1-Dependent Sox9" | temp$sox_binding=="Dmrt1 w/o Sox9" | temp$sox_binding=="Dmrt1 w/ Constitutive Sox9" | temp$sox_binding=="Constitutive Control"])
-temp$sox_binding<-factor(temp$sox_binding,levels=c("Dmrt1 w/ Constitutive Sox9","Dmrt1-Dependent Sox9","Dmrt1 w/o Sox9","Constitutive Control"))
+#View(as.data.frame(temp[temp$sox_binding=="unclassified"]))
+
+#length(temp<-temp[temp$sox_binding=="Dmrt1-Dependent Sox9" | temp$sox_binding=="Dmrt1 w/o Sox9" | temp$sox_binding=="Sox9 w/o Dmrt1" |
+#                    temp$sox_binding=="Dmrt1 w/ Constitutive Sox9" | temp$sox_binding=="Constitutive Control"])
+#temp$sox_binding<-factor(temp$sox_binding,levels=c("Dmrt1 w/ Constitutive Sox9","Dmrt1-Dependent Sox9","Dmrt1 w/o Sox9","Sox9 w/o Dmrt1","Constitutive Control"))
+
+length(temp<-temp[temp$sox_binding %in% c("DMRT1 DAR - Dmrt1-Dependent Sox9", "DMRT1 DAR - Dmrt1 w/o Sox9","DMRT1 DAR - Dmrt1 w/ Constitutive Sox9",
+                                      "COMMON DAR - DMRT1 Pioneering site - w SOX9","SOX9 DAR  - SOX9 Pioneering site","Constitutive Control")])
+temp$sox_binding<-factor(temp$sox_binding,levels=c("DMRT1 DAR - Dmrt1-Dependent Sox9", "DMRT1 DAR - Dmrt1 w/o Sox9","DMRT1 DAR - Dmrt1 w/ Constitutive Sox9",
+                                      "COMMON DAR - DMRT1 Pioneering site - w SOX9","SOX9 DAR  - SOX9 Pioneering site","Constitutive Control"))
+
+table(temp[temp$class!="Constitutive Control"]$sox_binding,useNA="always")
 temp_2<-peak_center(temp)
 temp_2$sox_binding<-temp$sox_binding
+data.frame(sort(table(temp_2$sox_binding,useNA="ifany"),decreasing=T))
+#  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9 ~ "Dmrt1-Dependent Sox9",
+#  temp %over% gran_ctvdmrt1_dmrt1 & temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 w/ Constitutive Sox9",
+#    temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & temp %over% gran_ctvsox9_sox9 ~ "Dmrt1 cagDmrt1 or Sox9 in cagSox9",
+#  temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "Dmrt1 w/o Sox9",
+#  !temp %over% gran_ctvdmrt1_dmrt1 & !temp %over% gran_ctvdmrt1_sox9 & !temp %over% gran_ctvsox9_sox9  ~ "No Dmrt1 or Sox9",
+#  !temp %over% gran_ctvdmrt1_dmrt1 & (temp %over% gran_ctvdmrt1_sox9 | temp %over% gran_ctvsox9_sox9)  ~ "Sox9 w/o Dmrt1",
+#  TRUE ~ "unclassified"
+#))
 
-table(temp_2$sox_binding)
+
+#table(temp[temp$class=="Constitutive"]$sox_binding<-"Constitutive Control")
+#data.frame(sort(table(temp$sox_binding)))
+
+#length(temp<-temp[temp$sox_binding=="Dmrt1-Dependent Sox9" | temp$sox_binding=="Dmrt1 w/o Sox9" | temp$sox_binding=="Sox9 w/o Dmrt1" |
+#                    temp$sox_binding=="Dmrt1 w/ Constitutive Sox9" | temp$sox_binding=="Constitutive Control"])
+#temp$sox_binding<-factor(temp$sox_binding,levels=c("Dmrt1 w/ Constitutive Sox9","Dmrt1-Dependent Sox9","Dmrt1 w/o Sox9","Sox9 w/o Dmrt1","Constitutive Control"))
+#table(temp[temp$class!="Constitutive"]$sox_binding)
+#temp_2<-peak_center(temp)
+#temp_2$sox_binding<-temp$sox_binding
+
+#table(temp_2$sox_binding)
 ```
 
 
-```{r}
+```{r in_vitro_heatmap_generate_plot,eval=T}
 #atac
 seqlevelsStyle(temp_2)<-"NCBI"
 
@@ -315,30 +361,106 @@ col_fun_k27acExp= colorRamp2(quantile(mat_k27acExp, c(0, 0.99)), c("white", "bla
 
 #col=c("red","green","blue","white")
 col=cbPalette[c(6,7,4,1)]
-svglite::svglite(paste0("Figure7d_invitro_atac_chip_heatmap_",ts,".svg"),width=8,height=7.5)
 
-EnrichedHeatmap(mat_p5, col = col_fun_p5, name = "chip_dmrt1_ref",column_title = "chip_dmrt1_ref",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,45),yaxis = F)) ) +
-EnrichedHeatmap(mat_p3, col = col_fun_p3, name = "atac_control2",column_title = "atac control2",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,0.6),yaxis = F)) ) +
-EnrichedHeatmap(mat_p4, col = col_fun_p4, name = "atac_sox9",column_title = "atac cag-Sox9",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,0.6),yaxis = F)) ) +
-EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "atac_control",column_title = "atac control1",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,.35),yaxis = F)) ) +
-EnrichedHeatmap(mat_p2, col = col_fun_p2, name = "atac_dmrt1",column_title = "atac cag-Dmrt1",axis_name_rot = 90,split=temp$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,.35),yaxis = F)) ) +
-EnrichedHeatmap(mat_p6, col = col_fun_p6, name = "chip_sox9p33",column_title = "chip_sox9p33",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,5),yaxis = F)) ) +
-EnrichedHeatmap(mat_p5, col = col_fun_p5, name = "chip_dmrt1",column_title = "chip_dmrt1",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,45),yaxis = F)) ) +
-EnrichedHeatmap(mat_p62, col = col_fun_p62, name = "chip_sox9_cagdmrt1",column_title = "chip_sox9_cagdmrt1",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,11),yaxis = F)) ) +
-EnrichedHeatmap(mat_k27acCnt, col = col_fun_k27acCnt, name = "k27acCnt",column_title = "k27acCnt",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,12),yaxis = F)) ) +
-EnrichedHeatmap(mat_k27acExp, col = col_fun_k27acExp, name = "k27acExp",column_title = "k27acExp",axis_name_rot = 90,pos_line=F,split=temp$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
-                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,12),yaxis = F)) ) 
+ # dmrt1_order<-row_order(  EnrichedHeatmap(mat_p5, col = col_fun_p5, name = "chip_dmrt1_ref",column_title = "chip_dmrt1_ref",axis_name_rot = 90,pos_line=F,split=temp$sox_binding))
+  
+  dmrt1_order<-order(temp$sox9_lfc/temp$dmrt1_lfc,decreasing=T)
+  table(temp_2$sox_binding<-ifelse(temp$sox_binding=="Constitutive Control","b","a"))
+  plot(temp[dmrt1_order]$sox9_lfc/temp[dmrt1_order]$dmrt1_lfc,ylim=c(-20,20))
+  
+  
+pdf(paste0("Figure7d_invitro_atac_chip_heatmap_",ts,".pdf"),width=8,height=7.5)
+
+EnrichedHeatmap(mat_p3, col = col_fun_p3, name = "atac_control2",column_title = "atac control2",axis_name_rot = 90,split=temp_2$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                row_order = dmrt1_order, top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,0.6),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_p4, col = col_fun_p4, name = "atac_sox9",column_title = "atac cag-Sox9",axis_name_rot = 90,split=temp_2$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,0.6),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "atac_control",column_title = "atac control1",axis_name_rot = 90,split=temp_2$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,.35),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_p2, col = col_fun_p2, name = "atac_dmrt1",column_title = "atac cag-Dmrt1",axis_name_rot = 90,split=temp_2$sox_binding,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,.35),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_p6, col = col_fun_p6, name = "chip_sox9p33",column_title = "chip_sox9p33",axis_name_rot = 90,pos_line=F,split=temp_2$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,5),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_p5, col = col_fun_p5, name = "chip_dmrt1",column_title = "chip_dmrt1",axis_name_rot = 90,pos_line=F,split=temp_2$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,45),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_p62, col = col_fun_p62, name = "chip_sox9_cagdmrt1",column_title = "chip_sox9_cagdmrt1",axis_name_rot = 90,pos_line=F,split=temp_2$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,11),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_k27acCnt, col = col_fun_k27acCnt, name = "k27acCnt",column_title = "k27acCnt",axis_name_rot = 90,pos_line=F,split=temp_2$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,12),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_k27acExp, col = col_fun_k27acExp, name = "k27acExp",column_title = "k27acExp",axis_name_rot = 90,pos_line=F,split=temp_2$sox_binding,column_title_rot=90,show_heatmap_legend = FALSE,
+                  top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,12),yaxis = F)),
+                use_raster=TRUE, raster_device="png", raster_quality=10) 
 
 dev.off()
 ```
 
+
+# Not included in Paper
+## MEME
+```{r invitro_meme,eval=F}
+length(vitro_subset_sox9<-subset(vitro_atac,vitro_atac$dmrt1_padj > 0.05 & vitro_atac$sox9_padj < 0.05 & sox9_lfc > 1 & dmrt1_lfc < 1))
+vitro_subset_dmrt1<-sample(subset(vitro_atac,vitro_atac$dmrt1_padj < 0.05 & vitro_atac$sox9_padj > 0.05 & sox9_lfc < 1 & dmrt1_lfc > 1),length(vitro_subset_sox9))
+length(vitro_subset_common<-subset(vitro_atac,vitro_atac$dmrt1_padj < 0.05 & vitro_atac$sox9_padj < 0.05 & sox9_lfc > 1 & dmrt1_lfc > 1))
+
+
+vitro_subset_sox9.dna<-getSeq(mm10,peak_center(vitro_subset_sox9)+75)
+names(vitro_subset_sox9.dna)<-paste0("vitro_subset_sox9_",1:length(vitro_subset_sox9))
+export(vitro_subset_sox9.dna,"vitro_subset_sox9_151bp.fasta")
+
+vitro_subset_dmrt1.dna<-getSeq(mm10,peak_center(vitro_subset_dmrt1)+75)
+names(vitro_subset_dmrt1.dna)<-paste0("vitro_subset_dmrt1_",1:length(vitro_subset_dmrt1))
+export(vitro_subset_dmrt1.dna,"vitro_subset_dmrt1_151bp.fasta")
+
+vitro_subset_common.dna<-getSeq(mm10,peak_center(vitro_subset_common)+75)
+names(vitro_subset_common.dna)<-paste0("vitro_subset_common_",1:length(vitro_subset_common))
+export(vitro_subset_common.dna,"vitro_subset_common_151bp.fasta")
+```
+
+# MEME IN
+```{r invitro_meme_import,eval=T}
+vitro_subset_sox9.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_sox9_151bp.txt")
+x<-lengths(vitro_subset_sox9.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_sox9_151bp.fasta"),unlist(vitro_subset_sox9.meme$motifList)),vitro_subset_sox9.meme$motifList))
+names(vitro_subset_sox9.meme_dna)<-paste0("Motif ",1:length(vitro_subset_sox9.meme$motifList),", p-value: ",vitro_subset_sox9.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(vitro_subset_sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Alone")
+
+vitro_subset_dmrt1.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_dmrt1_151bp.txt")
+x<-lengths(vitro_subset_dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_dmrt1_151bp.fasta"),unlist(vitro_subset_dmrt1.meme$motifList)),vitro_subset_dmrt1.meme$motifList))
+names(vitro_subset_dmrt1.meme_dna)<-paste0("Motif ",1:length(vitro_subset_dmrt1.meme$motifList),", p-value: ",vitro_subset_dmrt1.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(vitro_subset_dmrt1.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 Alone")
+
+vitro_subset_common.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_common_151bp.txt")
+x<-lengths(vitro_subset_common.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_common_151bp.fasta"),unlist(vitro_subset_common.meme$motifList)),vitro_subset_common.meme$motifList))
+names(vitro_subset_common.meme_dna)<-paste0("Motif ",1:length(vitro_subset_common.meme$motifList),", p-value: ",vitro_subset_common.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(vitro_subset_common.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Common to Dmrt1/Sox9")
+
+#GroupA motif
+vitro_subset_sox9_pfm<-consensusMatrix(vitro_subset_sox9.meme_dna[[1]])
+vitro_subset_sox9_pfm<-vitro_subset_sox9_pfm[1:4,]
+vitro_subset_sox9_motif<-new("pfm",mat=t(t(vitro_subset_sox9_pfm[1:4,])*1/colSums(vitro_subset_sox9_pfm[1:4,])), name="vitro_subset_sox9_Motif")
+
+#GroupB motif
+vitro_subset_dmrt1_pfm<-consensusMatrix(reverseComplement(vitro_subset_dmrt1.meme_dna[[1]]))
+vitro_subset_dmrt1_pfm<-vitro_subset_dmrt1_pfm[1:4,]
+vitro_subset_dmrt1_motif<-new("pfm",mat=t(t(vitro_subset_dmrt1_pfm[1:4,])*1/colSums(vitro_subset_dmrt1_pfm[1:4,])), name="vitro_subset_dmrt1_Motif")
+
+#Scan for GroupC motif
+vitro_subset_common_pfm<-consensusMatrix(reverseComplement(vitro_subset_common.meme_dna[[1]]))
+vitro_subset_common_pfm<-vitro_subset_common_pfm[1:4,]
+vitro_subset_common_motif<-new("pfm",mat=t(t(vitro_subset_common_pfm[1:4,])*1/colSums(vitro_subset_common_pfm[1:4,])), name="vitro_subset_common_Motif")
+
+
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,vitro_subset_sox9_motif,vitro_subset_common_motif,vitro_subset_dmrt1_motif,dmrt1_invitro_motif),revcomp=c(F,F,F,F,F)))
+
+```
 

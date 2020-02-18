@@ -1,764 +1,164 @@
 ---
-title: "Figure 2"
+title: "Figure 2 - Motifs"
 output: html_document
 editor_options: 
   chunk_output_type: console
 creative_commons: CC BY
 ---
 
-
-
-
-# Figure 2
-
-## Supplemental Figure 1
- Key Points?
-  1 - DMRT1 expression in Ovary ~ Dmrt1 expression in Testis (although could be 10x overexpression in 10% of cells)
-  2 - E13.5 XY ATAC resembles P7 Sertoli (not to surprising)
-  3 - Premarked Enhancers @ bipotential stage?
-      a.  Are they premarked in p23 Granulosa too?  If not, do they disappear at 13.5 or at p23
-      
+## Use meme to identify motifs under Dmrt1, Foxl2 and Sox9 ChIP peaks   ****MOVE TO FIGURE 2
 ```{r}
-#d<-distanceToNearest(ovary8w_ctvdmrt1_dmrt1_top)
-```
+length(ovary_foxl2)
+length(testis_sox9)
+length(sertoli_dmrt1_top<-topify(sertoli_dmrt1))
 
+ovary_foxl2.center<-GRanges(seqnames=seqnames(ovary_foxl2),IRanges(start=start(ovary_foxl2)+ovary_foxl2$summit,width=1),strand="*")+75
+ovary_foxl2.dna<-getSeq(mm10,sample(ovary_foxl2.center,length(testis_sox9)))
+names(ovary_foxl2.dna)<-paste0("ovary_foxl2_",1:length(ovary_foxl2.dna))
+export(ovary_foxl2.dna,"ovary_foxl2_sampled_151bp.fasta")
 
-## Make a dds object for all the Ovary samples
-```{r sox89,eval=T}
-dds_ovary<-dds[,str_detect(colData(dds)$time,"ovary") & !str_detect(colData(dds)$batch,"P006") ] # omit the single stranded dataset
-colData(dds_ovary)$sox8<-as.numeric(substr(colData(dds_ovary)$gene,2,2))
-colData(dds_ovary)$sox9<-as.numeric(substr(colData(dds_ovary)$gene,3,3))
-colData(dds_ovary)$sox<-colData(dds_ovary)$sox8+colData(dds_ovary)$sox9
-colData(dds_ovary)$gene<-as.factor(sapply(str_split(colData(dds_ovary)$gene,"_"), function(x) x[2]))
-colData(dds_ovary)$batch<-as.factor(colData(dds_ovary)$batch)
-as.data.frame(colData(dds_ovary))
+testis_sox9.center<-GRanges(seqnames=seqnames(testis_sox9),IRanges(start=start(testis_sox9)+testis_sox9$summit,width=1),strand="*")+75
+testis_sox9.dna<-getSeq(mm10,testis_sox9.center)
+names(testis_sox9.dna)<-paste0("testis_sox9_",1:length(testis_sox9.dna))
+export(testis_sox9.dna,"testis_sox9_151bp.fasta")
 
-
-  
-#plotPCA(normTransform(dds_ovary),intgroup=c("batch","gene","sox")) + theme_bw()
-
-#design(dds_ovary)<- ~ batch + gene + sox
-dds_ovary$batch<-droplevels(dds_ovary$batch)
-dds_ovary$gene<-droplevels(dds_ovary$gene)
-#dds_ovary$sox<-droplevels(dds_ovary$sox) #not a factor
-
-dds_ovary<-DESeq(dds_ovary)
-resultsNames(dds_ovary)
-
-summary(results_sox<-results(dds_ovary))
-results_sox$symbol<-mcols(dds_ovary)$symbol
-stopifnot(all.equal(results_sox$symbol,symbols[match(rownames(results_sox),symbols$gene_id),"gene_name"]))
-
-#DESeq2::plotMA(results_sox,ylim=c(-5,5),main="without interaction term")
-#View(as.data.frame(results_sox))
-
-
-#subset to significant genes
-#nrow(results_sox<-subset(results_sox,abs(log2FoldChange) > 1 & padj < 0.05 & baseMean > 100))
-
-
-
-# try to subset on dmrt1 , P033
-#as.data.frame(colData(dds_ovary_subset<-dds_ovary[,str_detect(colData(dds_ovary)$batch,"P033") & str_detect(colData(dds_ovary)$gene,"dmrt1")]))
-#design(dds_ovary_subset)<-~sox
-
-#dds_ovary_subset<-DESeq(dds_ovary_subset)
-#resultsNames(dds_ovary_subset)
-
-#results_sox_subset<-results(dds_ovary_subset)
-#results_sox_subset$mgi<-mgi[match(rownames(results_sox_subset),mgi$ensembl_gene_id),"mgi_symbol"]
-#View(as.data.frame(results_sox_subset))
+sertoli_dmrt1_top.center<-GRanges(seqnames=seqnames(sertoli_dmrt1_top),IRanges(start=start(sertoli_dmrt1_top)+sertoli_dmrt1_top$summit,width=1),strand="*")+75
+sertoli_dmrt1_top.dna<-getSeq(mm10,sample(sertoli_dmrt1_top.center,length(testis_sox9)))
+names(sertoli_dmrt1_top.dna)<-paste0("sertoli_dmrt1_top_",1:length(sertoli_dmrt1_top.dna))
+export(sertoli_dmrt1_top.dna,"sertoli_dmrt1_top_sampled_151bp.fasta")
 
 ```
 
-## Dmrt1 
-Importantly, we confirmed that DMRT1 levels were similar in ovaries expressing the transgene with or without Sox8/9 and were similar to those of control testes (Figure S#).
+#Import Meme on ChIPs  ****MOVE TO FIGURE 2
 ```{r}
-gg_sox("Dmrt1",d=dds_gonad)
-gg_sox("Defb36",d=dds_gonad)
-gg_sox("Foxl2",d=dds_gonad)
-gg_sox("Xist",d=dds_gonad)
+testis_sox9.meme<-TFBSTools:::parseMEMEOutput412("testis_sox9_151bp.txt")
+x<-lengths(testis_sox9.meme_dna<-relist(getSeq(readDNAStringSet("testis_sox9_151bp.fasta"),unlist(testis_sox9.meme$motifList)),testis_sox9.meme$motifList))
+names(testis_sox9.meme_dna)<-paste0("Motif ",1:length(testis_sox9.meme$motifList),", p-value: ",testis_sox9.meme$motifEvalues," ( ",x," sites )")
+#ggplot() + geom_logo(lapply(testis_sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
+#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 ChIP Peaks")
 
-gg_sox("2810468N07Rik")
-gg_sox("ENSMUSG00000037469")
-gg_sox("ENSMUSG00000068762")
-#gg_sox("Elovl2",d=dds_ovary)
-#gg_sox("Cidea",d=dds_ovary)
+testis_sox9.pfm<-consensusMatrix(reverseComplement(testis_sox9.meme_dna[[1]]))
+testis_sox9.motif<-new("pfm",mat=t(t(testis_sox9.pfm[1:4,])*1/colSums(testis_sox9.pfm[1:4,])), name="Testis Sox9 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif),revcomp=c(F,F)))
 
-```
+system.time(testis_sox9.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=testis_sox9.pfm[1:4,],score="85%")))
+sapply(testis_sox9.sites,length)
+testis_sox9.sites<-sort(unlist(GRangesList(testis_sox9.sites)))
 
+#foxl2
+ovary_foxl2.meme<-TFBSTools:::parseMEMEOutput412("ovary_foxl2_sampled_151bp.txt")
+x<-lengths(ovary_foxl2.meme_dna<-relist(getSeq(readDNAStringSet("ovary_foxl2_sampled_151bp.fasta"),unlist(ovary_foxl2.meme$motifList)),ovary_foxl2.meme$motifList))
+names(ovary_foxl2.meme_dna)<-paste0("Motif ",1:length(ovary_foxl2.meme$motifList),", p-value: ",ovary_foxl2.meme$motifEvalues," ( ",x," sites )")
+#ggplot() + geom_logo(lapply(ovary_foxl2.meme_dna,as.character),seq_type='dna') + theme_logo() +
+#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Foxl2 ChIP Peaks")
 
-### Make Table of FPKMs averaged by condition
-```{r fpkm_gonad,eval=T}
-#get fpkm
-dim(f_gonad<-as.data.frame(log2(fpkm(dds_gonad)+0.1)))
-
-#colnames(f_gonad)<-paste(colData(dds_gonad)$time,colData(dds_gonad)$gene,colData(dds_gonad)$sox,1:nrow(colData(dds_gonad)),sep="_")
-#f_gonad$mgi_symbol<-mcols(dds_gonad)$mgi_symbol
-#View(f_gonad)
-
-f_gonad_mean <- f_gonad %>% 
-#  dplyr::filter(mgi_symbol %in% c(goi,goi2)) %>% 
-  tibble::rownames_to_column(var="ensembl") %>%
-  tidyr::gather(sample,fpkm,-ensembl) %>%
-  dplyr::mutate(time=colData(dds_gonad)[sample,]$time) %>%
-  dplyr::mutate(gene=colData(dds_gonad)[sample,]$gene) %>%
-  dplyr::mutate(sox=colData(dds_gonad)[sample,]$sox) %>%
-  dplyr::mutate(sample=paste(time,gene,sox,sep="_")) %>% 
-  dplyr::group_by(sample,ensembl) %>% 
-    dplyr::summarize(mean_fpkm=round(mean(fpkm),3)) %>% 
-    dplyr::select(sample,ensembl,mean_fpkm) %>% 
-    ungroup() %>% 
-  tidyr::spread(sample,mean_fpkm) %>% as.data.frame()
-
-  rownames(f_gonad_mean) <- f_gonad_mean$ensembl
-  f_gonad_mean<-f_gonad_mean[,-1]
-
-colnames(f_gonad_mean)<-c("Ovary Sox Null","Ovary WT","Cag-Dmrt1 Sox Null","Cag-Dmrt1 Sox=1","Cag-Dmrt1 Sox=2","Cag-Dmrt1 Sox=4", "Testis WT")
-f_gonad_mean<-f_gonad_mean[,c("Ovary WT","Ovary Sox Null","Cag-Dmrt1 Sox Null","Cag-Dmrt1 Sox=1","Cag-Dmrt1 Sox=2","Cag-Dmrt1 Sox=4", "Testis WT")]
-
-f_gonad_mean_symbol<-f_gonad_mean
-f_gonad_mean_symbol$symbol<-symbols[match(rownames(f_gonad_mean_symbol),symbols$gene_id),]$gene_name
-#View(f_gonad_mean_mgi)
-dim(f_gonad)
-#sum(high_fpkm<-apply(f_gonad_mean,1,max) > log2(2.5))
-length(high_gonad_fpkm<-rownames(f_gonad_mean[apply(f_gonad_mean,1,max) > log2(2.5),]))
-table(symbols[symbols$gene_id %in% high_gonad_fpkm,"chr"])
-```
-
-## Figue 1a - Somatic Gene PCA in whole gonad samples
-### subset to soma DE & fpkm_high & autosomes
-```{r gonad_subset_pca,eval=T}
-
-# get autosomal genes
-#length(autosomal<-mgi[mgi$chromosome_name %in% as.character(1:19),]$ensembl_gene_id)
-
-#subset to ~soma
-dim(dds_gonad)
-dim(dds_gonad_subset<-dds_gonad[(rownames(dds_gonad) %in% rownames(results_soma)),])
-
-#length(autosomal<-symbols[symbols$chr %in% as.character(c(1:19)),]$gene_id)
-#dim(dds_gonad_subset<-dds_gonad[(rownames(dds_gonad) %in% rownames(results_soma)) & 
-#                                 (rownames(dds_gonad) %in% high_gonad_fpkm) & 
-#                                  (rownames(dds_gonad) %in% autosomal) &
-#                                  (rownames(dds_gonad) %in% high_soma_fpkm),])
-
-#as.data.frame(colData(dds_gonad_subset))
-
-colors_RdBu<-rev(colorRampPalette(brewer.pal(11,"RdBu"))(10))
-#plot(1:10,pch=16,col=colors,cex=4)
+ovary_foxl2.pfm<-consensusMatrix(reverseComplement(ovary_foxl2.meme_dna[[1]]))
+ovary_foxl2.motif<-new("pfm",mat=t(t(ovary_foxl2.pfm[1:4,])*1/colSums(ovary_foxl2.pfm[1:4,])), name="Ovary FOXL2 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(foxl2_jaspar_motif,ovary_foxl2.motif),revcomp=c(F,F)))
 
 
-#plotPCA(normTransform(dds_gonad_subset),intgroup=c("time","gene","sox8","sox9"),ntop=Inf,returnData = F)
+sertoli_dmrt1.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dmrt1_top_sampled_151bp.txt")
+x<-lengths(sertoli_dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dmrt1_top_sampled_151bp.fasta"),unlist(sertoli_dmrt1.meme$motifList)),sertoli_dmrt1.meme$motifList))
+names(sertoli_dmrt1.meme_dna)<-paste0("Motif ",1:length(sertoli_dmrt1.meme$motifList),", p-value: ",sertoli_dmrt1.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_dmrt1.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 ChIP Peaks")
 
-#Use rlog for PCA
-#dds_gonad_subset_rlog<-rlog(dds_gonad_subset,blind=T)
+sertoli_dmrt1.pfm<-consensusMatrix(reverseComplement(sertoli_dmrt1.meme_dna[[1]]))
+sertoli_dmrt1.motif<-new("pfm",mat=t(t(sertoli_dmrt1.pfm[1:4,])*1/colSums(sertoli_dmrt1.pfm[1:4,])), name="Sertoli Dmrt1 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(dmrt1_invitro_motif,sertoli_dmrt1.motif),revcomp=c(F,F)))
 
-figure_4a<-plotPCA(normTransform(dds_gonad_subset),intgroup=c("time","gene","sox8","sox9"),ntop=Inf,returnData = T) %>% 
-  mutate(group=factor(group,levels=c("ovary:control:2:2","ovary:control:0:0","ovary:dmrt1:0:0","ovary:dmrt1:0:1",
-                                     "ovary:dmrt1:1:0","ovary:dmrt1:1:1","ovary:dmrt1:2:0",
-                                     "ovary:dmrt1:2:2","testis:control:2:2"))) %>% 
-  ggplot(aes(x=PC1,y=PC2,fill=group)) + geom_point(size=10,shape=21) +
-  #xlim(c(-50,60)) + ylim(c(-60,30)) +
-  theme_bw() +  ggtitle("Gonad Data - Somatic Subset") +
-  geom_text(aes(label=ifelse( (sox8+sox9 < 4 | sox8+sox9 > 0) ,as.character(paste0(sox8,sox9)),''),x=PC1,y=PC2),size=6,color="black") +
-   scale_fill_manual(values=c("magenta",colors_RdBu[c(10,9,8,7,4,3,2)],"blue")) 
-  
-
-figure_4a
-
-#Paper Image
-svglite::svglite(paste0("somatic_gonad_PCA_",ts,".svg"),width=6,height=4.5)
-figure_4a
-dev.off()
-```
+system.time(sertoli_dmrt1.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dmrt1.pfm[1:4,],score="85%")))
+sapply(sertoli_dmrt1.sites,length)
+sertoli_dmrt1.sites<-sort(unlist(GRangesList(sertoli_dmrt1.sites)))
 
 
-## Eigenvectors for PC2
-```{r eigenvectors_for_pca,eval=T}
-#nt<-log2(counts(dds_gonad_subset,normalized=TRUE)+1)
-#colnames(nt)<-paste(colData(dds_gonad_subset)$time,colData(dds_gonad_subset)$sox,colData(dds_gonad_subset)$gene,sep="_")
-#nt.pca<-prcomp(t(nt))
-dds_gonad_subset_rlog.pca<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),returnData=T,ntop=Inf)
-#plot(dds_gonad_subset_rlog.pca[,c(1,2)],col=ifelse(stringr::str_detect(rownames(dds_gonad_subset_rlog.pca),"WTm"),"red","black"),pch=16)
-topN <- 10
-
-nt.rot<-attr(dds_gonad_subset_rlog.pca,"rotation")
-#pc1
-nt.rot1<-as.data.frame(nt.rot[order(abs(nt.rot[,1]),decreasing=TRUE),])[,1,drop=F]
-head(left_join(tibble::rownames_to_column(nt.rot1,var="gene_id"),symbols,by="gene_id"),topN) 
-
-#pc2
-nt.rot2<-as.data.frame(nt.rot[order(abs(nt.rot[,2]),decreasing=TRUE),])[,2,drop=F]
-head(left_join(tibble::rownames_to_column(nt.rot2,var="gene_id"),symbols,by="gene_id"),topN)
-
-#pc3
-nt.rot3<-as.data.frame(nt.rot[order(abs(nt.rot[,3]),decreasing=TRUE),])[,3,drop=F]
-head(left_join(tibble::rownames_to_column(nt.rot3,var="gene_id"),symbols,by="gene_id"),topN)
-
-
-#nt.rot <- nt.pca$rotation
-#pc1
-#symbols[symbols$gene_id %in% names(nt.rot[,1][order(abs(nt.rot[,1]),decreasing=TRUE)][1:topN]),]
-#pc2
-#symbols[symbols$gene_id %in% names(nt.rot[,2][order(abs(nt.rot[,2]),decreasing=TRUE)][1:topN]),]
+#show similarity of Dmrt1 and Sox9 Motifs
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif,dmrt1_invitro_motif,sertoli_dmrt1.motif),revcomp=c(F,F,F,F)))
 
 ```
 
-## Figure 4C - Venn Diagram
+## what motif is under Sertoli DARs without Dmrt1/Sox9 motifs  ****MOVE TO FIGURE 2
 ```{r}
 
-# Compare Sox89 wt vs null as a categorial variable and look for an interaction term
-colData(dds_ovary_cat<-dds_ovary[,colData(dds_ovary)$sox==0 | colData(dds_ovary)$sox==4])
-colData(dds_ovary_cat)$sox<-factor(ifelse(colData(dds_ovary_cat)$sox==4,"sox89wt","sox89null"),levels=c("sox89wt","sox89null"))
-design(dds_ovary_cat)<- ~ gene + sox + gene:sox
-as.data.frame(colData(dds_ovary_cat))
+# Dmrt
+length(sertoli_dar_Dmrt1<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$peak =="D"])
+sertoli_dar_Dmrt1<-sertoli_dar_Dmrt1[with(sertoli_dar_Dmrt1,order(padj)),]
+sertoli_dar_Dmrt1$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_Dmrt1)-1000))
+
+mcols(sertoli_dar_Dmrt1) %>% as.data.frame() %>% 
+  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+ggplot(aes(x=lfc,y=(-1*log10(padj)),color=top)) + geom_point() + theme_bw()  + 
+  scale_color_manual(values=c(cbPalette[c(6,2,3,8,1,4)]))
+
+sertoli_dar_Dmrt1<-peak_center(sertoli_dar_Dmrt1[1:1000])
+sertoli_dar_Dmrt1.dna<-getSeq(mm10,sertoli_dar_Dmrt1+100)
+names(sertoli_dar_Dmrt1.dna)<-paste0("sertoli_dar_Dmrt1_",1:length(sertoli_dar_Dmrt1.dna))
+export(sertoli_dar_Dmrt1.dna,"sertoli_dar_Dmrt1_201bp.fasta")
+
+sertoli_dar_Dmrt1.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dar_Dmrt1_201bp.txt")
+x<-lengths(sertoli_dar_Dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dar_Dmrt1_201bp.fasta"),unlist(sertoli_dar_Dmrt1.meme$motifList)),sertoli_dar_Dmrt1.meme$motifList))
+names(sertoli_dar_Dmrt1.meme_dna)<-paste0("Motif ",1:length(sertoli_dar_Dmrt1.meme$motifList),", p-value: ",sertoli_dar_Dmrt1.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_dar_Dmrt1.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 Figure 1")
 
 
-#as.data.frame(colData(dds_ovary))[,c(1,3:9)]
-as.data.frame(colData(dds_ovary_wt<-dds_ovary_cat[,str_detect(colData(dds_ovary_cat)$sox,"sox89wt")]))
-design(dds_ovary_wt)<-~gene
-dds_ovary_wt<-estimateSizeFactors(dds_ovary_wt)
-dds_ovary_wt<-DESeq(dds_ovary_wt)
-summary(res_dds_ovary_wt<-results(dds_ovary_wt,alpha=0.05))
+# Sox9
+length(sertoli_dar_Sox9<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$peak =="S"])
+sertoli_dar_Sox9<-sertoli_dar_Sox9[with(sertoli_dar_Sox9,order(padj)),]
+# sertoli_dar_Sox9$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_Sox9)-1000))
 
-as.data.frame(colData(dds_ovary_null<-dds_ovary_cat[,str_detect(colData(dds_ovary_cat)$sox,"sox89null")]))
-design(dds_ovary_null)<-~gene
-dds_ovary_null<-estimateSizeFactors(dds_ovary_null)
-dds_ovary_null<-DESeq(dds_ovary_null)
-summary(res_dds_ovary_null<-results(dds_ovary_null,alpha=0.05))
+mcols(sertoli_dar_Sox9) %>% as.data.frame() %>% 
+  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+ggplot(aes(x=lfc,y=(-1*log10(padj)))) + geom_point() + theme_bw()  + 
+  scale_color_manual(values=c(cbPalette[c(6,2,3,8,1,4)]))
 
+#sertoli_dar_Sox9<-peak_center(sertoli_dar_Sox9[1:1000])
+sertoli_dar_Sox9.dna<-getSeq(mm10,sertoli_dar_Sox9+100)
+names(sertoli_dar_Sox9.dna)<-paste0("sertoli_dar_Sox9_",1:length(sertoli_dar_Sox9.dna))
+export(sertoli_dar_Sox9.dna,"sertoli_dar_Sox9_201bp.fasta")
 
-length(x1<-rownames(subset(res_dds_ovary_wt, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
-length(y1<-rownames(subset(res_dds_ovary_null, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
-length(z1<- x1[x1 %in% y1])
-grid.newpage()
-vennplot <- draw.pairwise.venn(length(x1),length(y1),length(z1), c("Sox8/9 WT", "Sox8/9 Null"))
-```
-
-
-## Figure 4b  - example genes
-```{r}
-
-gg_sox_fpkm("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
-svglite::svglite(paste0("gonad_Defb36_expression_",ts,".svg"),width=5,height=3)
-gg_sox_fpkm("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
-dev.off()
-
-gg_sox_fpkm("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
-
-svglite::svglite(paste0("gonad_Foxl2_expression_",ts,".svg"),width=5,height=3)
-gg_sox_fpkm("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
-dev.off()
-
-gg_sox_fpkm("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
-
-svglite::svglite(paste0("gonad_Dmrt1_expression_",ts,".svg"),width=5,height=3)
-gg_sox_fpkm("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
-dev.off()
-
-nrow(temp<-f_gonad_mean[rownames(dds_gonad_subset),])
+sertoli_dar_Sox9.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dar_Sox9_201bp.txt")
+x<-lengths(sertoli_dar_Sox9.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dar_Sox9_201bp.fasta"),unlist(sertoli_dar_Sox9.meme$motifList)),sertoli_dar_Sox9.meme$motifList))
+names(sertoli_dar_Sox9.meme_dna)<-paste0("Motif ",1:length(sertoli_dar_Sox9.meme$motifList),", p-value: ",sertoli_dar_Sox9.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_dar_Sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Figure 1")
 
 
 
+length(sertoli_dar_wo_DS<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$peak =="N"])
+sertoli_dar_wo_DS<-sertoli_dar_wo_DS[with(sertoli_dar_wo_DS,order(padj)),]
+sertoli_dar_wo_DS$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_wo_DS)-1000))
 
+mcols(sertoli_dar_wo_DS) %>% as.data.frame() %>% 
+  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+ggplot(aes(x=lfc,y=(-1*log10(padj)),color=top)) + geom_point() + theme_bw()  + 
+  scale_color_manual(values=c(cbPalette[c(6,2,3,8,1,4)]))
 
-plotPCA(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf) + 
-  theme_bw() +  ggtitle("Gonad Data - Somatic Subset")
+sertoli_dar_wo_DS<-peak_center(sertoli_dar_wo_DS[1:1000])
+sertoli_dar_wo_DS.dna<-getSeq(mm10,sertoli_dar_wo_DS+100)
+names(sertoli_dar_wo_DS.dna)<-paste0("sertoli_dar_wo_DS_",1:length(sertoli_dar_wo_DS.dna))
+export(sertoli_dar_wo_DS.dna,"sertoli_dar_wo_DS_201bp.fasta")
 
-g1r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(1,2)) + theme_bw() + theme(legend.position = "none")
-g2r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(3,1)) + theme_bw() + theme(legend.position = "none")
-g3r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(3,2)) + theme_bw() + theme(legend.position = "none")
-g4r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(2,3)) + theme_bw() 
-grid.arrange(g1r,g3r,g_legend(g4r),g2r, ncol=2,top="Gonad Data - Somatic Subset")
+sertoli_dar_wo_DS.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dar_wo_DS_201bp.txt")
+x<-lengths(sertoli_dar_wo_DS.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dar_wo_DS_201bp.fasta"),unlist(sertoli_dar_wo_DS.meme$motifList)),sertoli_dar_wo_DS.meme$motifList))
+names(sertoli_dar_wo_DS.meme_dna)<-paste0("Motif ",1:length(sertoli_dar_wo_DS.meme$motifList),", p-value: ",sertoli_dar_wo_DS.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_dar_wo_DS.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("wo Dmrt1/Sox9 binding")
 
-#pheatmap(sweep(temp,1,apply(temp, 1, mean),"-"),cluster_cols=F,show_rownames = F,scale="none",col=colors)
+sertoli_dar_wo_DS.pfm<-consensusMatrix(reverseComplement(sertoli_dar_wo_DS.meme_dna[[3]]))
+sertoli_dar_wo_DS.motif<-new("pfm",mat=t(t(sertoli_dar_wo_DS.pfm[1:4,])*1/colSums(sertoli_dar_wo_DS.pfm[1:4,])), name="sertoli_dar_wo_DS")
 
-```
+plotMotifLogoStack(DNAmotifAlignment(list(tead2_jaspar_motif,sertoli_dar_wo_DS.motif),revcomp=c(F,F)))
 
+#Scan for TEA motif
 
-## Define list of sex determination genes based on embryonic microarray data and literature/ontology sources
-```{r}
-length(embryonic_network_full <- tT[tT$adj.P.Val < 0.05 & tT$chr %in% 1:19,"ensembl"])
-
-length(en_list<-symbols[symbols$gene_name %in% read_table("../granulosa_culture/network.txt",col_names = F)$X1,"gene_id"])
-
-length(go_list<-symbols[symbols$gene_name %in% read_table("../granulosa_culture/go_sex_determination.txt",col_names = F)$X1,"gene_id"])
-#vb_list <-stringr::str_to_title(read_table("../granulosa_culture/vivian_list.txt",col_names = F)$X1)
-length(vb_list<-symbols[symbols$gene_name %in% stringr::str_to_title(read_table("../granulosa_culture/vivian_list.txt",col_names = F)$X1),"gene_id"])
-
-length(sex_det_list<-unique(c(embryonic_network_full,en_list,go_list,vb_list)))
-
-
+system.time(sertoli_dar_wo_DS.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dar_wo_DS.pfm[1:4,],score="90%")))
+sapply(sertoli_dar_wo_DS.sites,length)
+sertoli_dar_wo_DS.sites<-sort(unlist(GRangesList(sertoli_dar_wo_DS.sites)))
 
 
 ```
 
-
-## Figure 1D - Heatmap of genes that are Sox8/9 dependent that are implicated in sex determination
-```{r}
-length(x1<-rownames(subset(res_dds_ovary_wt, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
-length(y1<-rownames(subset(res_dds_ovary_null, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
-length(z1<- x1[x1 %in% y1])
-
-
-length(x1sd<-x1[x1 %in% sex_det_list & !(x1 %in% z1)])
-length(y1sd<-y1[y1 %in% sex_det_list & !(y1 %in% z1)])
-length(z1sd<-z1[z1 %in% sex_det_list & !(z1 %in% y1sd) & !(z1 %in% x1sd)])
-
-temp<-c(x1sd,y1sd,z1sd)
-temp<-f_gonad_mean[temp,]
-temp<-temp[,c("Ovary WT","Cag-Dmrt1 Sox=4","Ovary Sox Null","Cag-Dmrt1 Sox Null")]
-nrow(temp<-temp[(apply(temp,1,function(x) max(x) > 5)),])  # remove low expressed genes
-temp2<-sweep(temp,1,apply(temp, 1, mean),"-")
-summary(apply(temp2,1,mean))
-
-table(temp2$class <- case_when(
-  rownames(temp2) %in% x1sd ~ "Sox89 WT Only",
-  rownames(temp2) %in% y1sd ~ "Sox89 Null Only",
-  rownames(temp2) %in% z1sd ~ "Sox89 Independent",
-  TRUE ~ "blah"
-))
-
-
-temp2$class<-factor(temp2$class, levels=c("Sox89 WT Only","Sox89 Null Only","Sox89 Independent"))
-rownames(temp2)<-symbols[match(rownames(temp2),symbols$gene_id),]$gene_name
-#rownames(temp)<-symbols[match(rownames(temp),symbols$gene_id),]$gene_name
-
-col_fun = circlize::colorRamp2(c(min(temp2[,1:4]),0, max(temp2[,1:4])), c("blue","white", "red"))
-
-H1<-Heatmap(as.matrix(temp2[,1:4]), 
-        column_title = "Sox Dependent Sex Determination Genes", rect_gp = gpar(col = "black", lwd = 0.5),
-        cluster_rows = TRUE, cluster_columns=FALSE, split = temp2$class,  
-        row_dend_reorder=temp2$`Cag-Dmrt1 Sox=4`,
-        row_names_gp = gpar(fontsize = 8), row_title_gp = gpar(fontsize = 10),
-        row_names_side = "left",col = col_fun, show_heatmap_legend = TRUE)
-
-
-
-svglite::svglite(paste0("sox_dependent_sex_determination_",ts,".svg"),width=3,height=7)
-H1
-dev.off()
-
-#View(temp2)
-
-```
-
-#Impact on X Chromosome Genes in WT vs Sox9 Null
-```{r}
-#temp_wt<-subset(res_dds_ovary_wt, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50))
-#temp_null<-subset(res_dds_ovary_null, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50))
-
-temp<-dplyr::full_join(tibble::rownames_to_column(as.data.frame(res_dds_ovary_wt),var="Ensembl_ID"),
-                 tibble::rownames_to_column(as.data.frame(res_dds_ovary_null),var="Ensembl_ID"),by="Ensembl_ID",suffix=c(".wt",".null")) %>% 
-  filter((abs(log2FoldChange.wt) > 1 & padj.wt < 0.05 & baseMean.wt > 50 ) | (abs(log2FoldChange.null) > 1 & padj.null < 0.05 & baseMean.null > 50 ) ) 
-temp$symbol<-symbols[match(temp$Ensembl_ID,symbols$gene_id),"gene_name"]
-temp$chr<-symbols[match(temp$Ensembl_ID,symbols$gene_id),"chr"]
-
-temp %>% 
-  filter(chr=="X" | chr=="5" | chr=="1") %>% 
-  ggplot(aes(x=log2FoldChange.wt,y=log2FoldChange.null,color=chr)) + geom_point() +
-  xlim(c(-25,15)) + ylim(c(-25,15)) + theme_bw()
-
-#Null GSEA
-temp_res1 <-as.data.frame(res_dds_ovary_null[!is.na(res_dds_ovary_null$padj),])
-temp_res1$ENSEMBL<-rownames(temp_res1)
-temp_res1$CHR<-symbols[match(temp_res1$ENSEMBL,symbols$gene_id),"chr"]
-temp_res1<-temp_res1[temp_res1$CHR %in% c(1:19,"X"),]
-temp_res1$CHR<-factor(temp_res1$CHR,levels=c(1:19,"X"))
-#incm <- do.call( rbind, with(temp, tapply(ENSEMBL, CHR, function(x) CHR == temp[x,"CHR"] ) ))
-incm <- do.call( rbind, with(temp_res1, tapply(ENSEMBL, CHR, function(x) CHR == temp_res1[x,"CHR"] ) ))
-colnames(incm) <- temp_res1$ENSEMBL
-#str(incm)
-rowSums(incm)
-
-testCategory <- function( chr ) {
-isMember <- incm[ chr, ]
-data.frame(
-chr = chr,
-numGenes = sum( isMember ),
-avgLFC = mean( temp_res1$log2FoldChange[isMember] ),
-strength = sum( temp_res1$log2FoldChange[isMember] ) / sqrt(sum(isMember)),
-pvalue = t.test( temp_res1$log2FoldChange[ isMember ] )$p.value,
-CHR = chr) }
-
-(gsea_null<-do.call( rbind, lapply( rownames(incm), testCategory ) ))
-sum(gsea$numGenes)
-
-#WT GSEA
-temp_res2 <-as.data.frame(res_dds_ovary_wt[!is.na(res_dds_ovary_wt$padj),])
-temp_res2$ENSEMBL<-rownames(temp_res2)
-temp_res2$CHR<-symbols[match(temp_res2$ENSEMBL,symbols$gene_id),"chr"]
-temp_res2<-temp_res2[temp_res2$CHR %in% c(1:19,"X"),]
-temp_res2$CHR<-factor(temp_res2$CHR,levels=c(1:19,"X"))
-#incm <- do.call( rbind, with(temp, tapply(ENSEMBL, CHR, function(x) CHR == temp[x,"CHR"] ) ))
-incm <- do.call( rbind, with(temp_res2, tapply(ENSEMBL, CHR, function(x) CHR == temp_res2[x,"CHR"] ) ))
-colnames(incm) <- temp_res2$ENSEMBL
-#str(incm)
-rowSums(incm)
-
-testCategory <- function( chr ) {
-isMember <- incm[ chr, ]
-data.frame(
-chr = chr,
-numGenes = sum( isMember ),
-avgLFC = mean( temp_res2$log2FoldChange[isMember] ),
-strength = sum( temp_res2$log2FoldChange[isMember] ) / sqrt(sum(isMember)),
-pvalue = t.test( temp_res2$log2FoldChange[ isMember ] )$p.value,
-CHR = chr) }
-
-(gsea_wt<-do.call( rbind, lapply( rownames(incm), testCategory ) ))
-sum(gsea$numGenes)
-
-
-
-```
-
-## Figure 2E - Dmrt1/Sox9 ChIP in Cag-Dmrt1 Ovaries
-  
-```{r}
-
-length(ovary8w_ctvdmrt1_dmrt1)
-
-(qs<-quantile(ovary8w_ctvdmrt1_dmrt1$score, c(0, 0.25, 0.5, 0.75, 0.99)))
-plot(sort(ovary8w_ctvdmrt1_dmrt1$score,decreasing=T),pch=16,cex=0.5,col="red")
-abline(h=qs,col="black")
-
-length(ovary8w_ctvdmrt1_dmrt1_top<-ovary8w_ctvdmrt1_dmrt1[ovary8w_ctvdmrt1_dmrt1$score > qs[3] & ovary8w_ctvdmrt1_dmrt1$score < qs[5]])
-
-length(ovary_ctvdmrt1_sox9) # also 8w
-(qs<-quantile(ovary_ctvdmrt1_sox9$score, c(0, 0.25, 0.5, 0.75, 0.99)))
-plot(sort(ovary_ctvdmrt1_sox9$score,decreasing=T),pch=16,cex=0.5,col="blue")
-abline(h=qs,col="black")
-length(ovary_ctvdmrt1_sox9_top<-ovary_ctvdmrt1_sox9[ovary_ctvdmrt1_sox9$score > qs[3] & ovary_ctvdmrt1_sox9$score < qs[5]])
-
-
-#venn version of peaks
-#length(temp<-ovary_ctvdmrt1_sox9[ovary_ctvdmrt1_sox9 %over% ovary8w_ctvdmrt1_dmrt1])
-#grid.newpage()
-#vennplot <- draw.pairwise.venn(length(ovary8w_ctvdmrt1_dmrt1),length(ovary_ctvdmrt1_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1", "ovary_ctvdmrt1_sox9"))
-
-#clean up peak list for plot
-#length(temp_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1_top[!ovary8w_ctvdmrt1_dmrt1_top %over% rmsk],value=c(1:19,"X"),pruning.mode = "coarse"))
-#length(temp_dmrt1<-temp_dmrt1[!temp_dmrt1 %over% bl_mm10])
-#length(temp_sox9<-keepSeqlevels(ovary_ctvdmrt1_sox9_top[!ovary_ctvdmrt1_sox9_top %over% rmsk],value=c(1:19,"X"),pruning.mode = "coarse"))
-#length(temp_sox9<-temp_sox9[!temp_sox9 %over% bl_mm10])
-
-length(temp_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1_top[!ovary8w_ctvdmrt1_dmrt1_top %over% bl_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
-length(temp_sox9<-keepSeqlevels(ovary_ctvdmrt1_sox9_top[!ovary_ctvdmrt1_sox9_top %over% bl_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
-
-#new venn
-#length(temp<-temp_sox9[temp_sox9 %over% temp_dmrt1])
-#grid.newpage()
-#vennplot <- draw.pairwise.venn(length(temp_dmrt1),length(temp_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1_top", "ovary_ctvdmrt1_sox9_top"))
-
-#Focus on differentially ATAC-able
-length(temp_dmrt1<-temp_dmrt1[temp_dmrt1 %over% vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]])
-length(temp_sox9<-temp_sox9[temp_sox9 %over% vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]])
-
-  #new venn
-#length(temp<-temp_sox9[temp_sox9 %over% temp_dmrt1])
-#grid.newpage()
-#vennplot <- draw.pairwise.venn(length(temp_dmrt1),length(temp_sox9),length(temp), c("ovary8w_ctvdmrt1_dmrt1_top", "ovary_ctvdmrt1_sox9_top"))
-```
-
-
-#export these 252 top tier genes for MEME
-```{r old_meme_delete,eval=F}
-summary(width(temp))
-temp<-peak_center(temp)
-overlap.dna<-getSeq(mm10,temp+100)
-names(overlap.dna)<-paste0("overlap_",1:length(overlap.dna))
-export(overlap.dna,"overlap_201bp.fasta")
-
-overlap.meme<-TFBSTools:::parseMEMEOutput412("overlap_201bp.txt")
-x<-lengths(overlap.meme_dna<-relist(getSeq(readDNAStringSet("overlap_201bp.fasta"),unlist(overlap.meme$motifList)),overlap.meme$motifList))
-names(overlap.meme_dna)<-paste0("Motif ",1:length(overlap.meme$motifList),", p-value: ",overlap.meme$motifEvalues," ( ",x," sites )")
-ggplot() + geom_logo(lapply(overlap.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 & Sox 9 Overlap")
-
-```
-
-## Heatmap
-```{r}
-# Remove regions that have mega-copy Dmrt1 sites
-length(temp_dmrt1<-temp_dmrt1[countOverlaps(peak_center(temp_dmrt1)+100,dmrt1_pwm) < 8 & countOverlaps(peak_center(temp_dmrt1)+100,sox9_pwm) < 15])
-length(temp_sox9<-temp_sox9[countOverlaps(peak_center(temp_sox9)+100,dmrt1_pwm) < 8 & countOverlaps(peak_center(temp_sox9)+100,sox9_pwm) < 15])
-
-#Venn diagram for top peaks
-
-length(a<-temp_dmrt1[!temp_dmrt1 %over% ovary_ctvdmrt1_sox9])
-length(b<-temp_dmrt1[temp_dmrt1 %over% temp_sox9])
-length(c<-temp_sox9[!temp_sox9 %over% ovary8w_ctvdmrt1_dmrt1 ])
-#grid.newpage()
-#vennplot <- draw.pairwise.venn(length(a),length(c),length(b), c("ovary8w_ctvdmrt1_dmrt1", "ovary_ctvdmrt1_sox9"))
-#cross section area too large 
-
-(sample_size<-min(c(length(a),length(b),length(c))))
-length(vivo_atac_subset[vivo_atac_subset$class=="Constitutive" & vivo_atac_subset$p23_Female > 3.3 & vivo_atac_subset$p7_Male > 3.3])
-length(d<-sample(vivo_atac_subset[vivo_atac_subset$class=="Constitutive" & vivo_atac_subset$p23_Female > 3.3 & vivo_atac_subset$p7_Male > 3.3],sample_size))
-
-a<-sample(a,sample_size)
-b<-sample(b,sample_size)
-
-#length(temp<-c(sample(a,sample_size),
-#               sample(b,sample_size),
-#               sample(c,sample_size)))
-
-temp<-c(a,b,c,d)
-
-
-
-length(temp<-peak_center(temp) )
-table(temp$level<-factor(c(rep("Dmrt1 Alone",length(a)),rep("Overlap",length(b)),rep("Sox9 Alone",length(c)),rep("Constitutive",sample_size)),levels=c("Dmrt1 Alone","Overlap","Sox9 Alone","Constitutive")))
-seqlevelsStyle(temp)
-```
-
-## Meme on Each group
-```{r export_fasta,eval=F}
-#export for meme
-group_a.dna<-getSeq(mm10,sample(a,662)+75)
-names(group_a.dna)<-paste0("group_a_",1:length(group_a.dna))
-export(group_a.dna,"group_a_sampled_151bp.fasta")
-
-group_b.dna<-getSeq(mm10,b+75)
-names(group_b.dna)<-paste0("group_b_",1:length(group_b.dna))
-export(group_b.dna,"group_b_151bp.fasta")
-
-group_c.dna<-getSeq(mm10,c+75)
-names(group_c.dna)<-paste0("group_c_",1:length(group_c.dna))
-export(group_c.dna,"group_c_151bp.fasta")
-
-#group2.dna<-getSeq(mm10,temp[temp$level=="Overlap"]+100)
-#names(group2.dna)<-paste0("group2_",1:length(group2.dna))    
-#export(group2.dna,"b_open_201bp.fasta")
-
-#group3.dna<-getSeq(mm10,temp[temp$level=="Sox9 Alone"]+100)
-#names(group3.dna)<-paste0("group3_",1:length(group3.dna))
-
-
-#x<-"group_c_201bp.txt" #doesn't work
-#  x<-"group1_201bp.txt" #works
-#filename.fasta<-paste0(tools::file_path_sans_ext(x),".fasta")
-#filename.meme<-TFBSTools:::parseMEMEOutput412(x)
-#filename.meme
-
-```
-
-
-```{r import_meme,eval=T}
-
-group_a.meme<-TFBSTools:::parseMEMEOutput412("group_a_sampled_151bp.txt")
-x<-lengths(group_a.meme_dna<-relist(getSeq(readDNAStringSet("group_a_sampled_151bp.fasta"),unlist(group_a.meme$motifList)),group_a.meme$motifList))
-names(group_a.meme_dna)<-paste0("Motif ",1:length(group_a.meme$motifList),", p-value: ",group_a.meme$motifEvalues," ( ",x," sites )")
-ggplot() + geom_logo(lapply(group_a.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 Alone")
-
-group_b.meme<-TFBSTools:::parseMEMEOutput412("group_b_151bp.txt")
-x<-lengths(group_b.meme_dna<-relist(getSeq(readDNAStringSet("group_b_151bp.fasta"),unlist(group_b.meme$motifList)),group_b.meme$motifList))
-names(group_b.meme_dna)<-paste0("Motif ",1:length(group_b.meme$motifList),", p-value: ",group_b.meme$motifEvalues," ( ",x," sites )")
-ggplot() + geom_logo(lapply(group_b.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1+Sox9")
-
-group_c.meme<-TFBSTools:::parseMEMEOutput412("group_c_151bp.txt")
-  x<-lengths(group_c.meme_dna<-relist(getSeq(readDNAStringSet("group_c_151bp.fasta"),unlist(group_c.meme$motifList)),group_c.meme$motifList))
-names(group_c.meme_dna)<-paste0("Motif ",1:length(group_c.meme$motifList),", p-value: ",group_c.meme$motifEvalues," ( ",x," sites )")
-ggplot() + geom_logo(lapply(group_c.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Alone")
-
-ggplot() + geom_logo(list(as.character(reverseComplement(group_c.meme_dna[[1]]))),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Alone Site 1 revcomp")
-
-#group2.meme<-TFBSTools:::parseMEMEOutput412("b_open_201bp.txt")
-#x<-lengths(group2.meme_dna<-relist(getSeq(readDNAStringSet("b_open_201bp.fasta"),unlist(group2.meme$motifList)),group2.meme$motifList))
-#names(group2.meme_dna)<-paste0("Motif ",1:length(group2.meme$motifList),", p-value: ",group2.meme$motifEvalues," ( ",x," sites )")
-#ggplot() + geom_logo(lapply(group2.meme_dna,as.character),seq_type='dna') + theme_logo() +
-#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Overlap")
-#
-#ggplot() + geom_logo(as.character(reverseComplement(group2.meme_dna[[1]])),seq_type='dna') + theme_logo() +
-#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("revcomp")
-#
-#  group3.meme<-TFBSTools:::parseMEMEOutput412("group3_201bp.txt")
-#x<-lengths(group3.meme_dna<-relist(getSeq(readDNAStringSet("group3_201bp.fasta"),unlist(group3.meme$motifList)),group3.meme$motifList))
-#names(group3.meme_dna)<-paste0("Motif ",1:length(group3.meme$motifList),", p-value: ",group3.meme$motifEvalues," ( ",x," sites )")
-#ggplot() + geom_logo(lapply(group3.meme_dna,as.character),seq_type='dna') + theme_logo() +
-#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Alone")
-
-#ggplot() + geom_logo(list(as.character(group3.meme_dna[[1]]),as.character(reverseComplement(group3.meme_dna[[1]]))),seq_type='dna') + theme_logo() +
-#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("revcomp")
-
-
-#scan genome for "open" sox9 motif
-#align with canonical
-
-
-
-#GroupA motif
-group_a_pfm<-consensusMatrix(reverseComplement(group_a.meme_dna[[1]]))
-group_a_pfm<-group_a_pfm[1:4,]
-group_a_motif<-new("pfm",mat=t(t(group_a_pfm[1:4,])*1/colSums(group_a_pfm[1:4,])), name="Group_A_Motif")
-
-#GroupB motif
-group_b_pfm<-consensusMatrix(group_b.meme_dna[[3]])
-group_b_pfm<-group_b_pfm[1:4,]
-group_b_motif<-new("pfm",mat=t(t(group_b_pfm[1:4,])*1/colSums(group_b_pfm[1:4,])), name="Group_B_Motif")
-
-#Scan for GroupC motif
-group_c_pfm<-consensusMatrix(reverseComplement(group_c.meme_dna[[1]]))
-group_c_pfm<-group_c_pfm[1:4,]
-group_c_motif<-new("pfm",mat=t(t(group_c_pfm[1:4,])*1/colSums(group_c_pfm[1:4,])), name="Group_C_Motif")
-
-
-plotMotifLogoStack(DNAmotifAlignment(list(group_c_motif,group_b_motif,group_a_motif),revcomp=c(F,F,F)))
-
-
-
-plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,group_c_motif,group_b_motif,group_a_motif,dmrt1_invitro_motif),revcomp=c(F,F,F,F,F)))
-
-```
-
-## Scan for Motifs
-```{r scan_for motifs,eval=F}
-system.time(group_a_sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=group_a_pfm,score="92%")))
-sapply(group_a_sites,length)
-group_a_sites<-sort(unlist(GRangesList(group_a_sites)))
-
-system.time(group_b_sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=group_b_pfm,score="90%")))
-sapply(group_b_sites,length)
-group_b_sites<-sort(unlist(GRangesList(group_b_sites)))
-
-system.time(group_c_sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=group_c_pfm,score="85%")))
-sapply(group_c_sites,length)
-group_c_sites<-sort(unlist(GRangesList(group_c_sites)))
-
-save(group_a_sites,group_b_sites,group_c_sites,file="group_abc_sites.rdata")
-```
-
-
-
-#sox9_open_pfm<-consensusMatrix(reverseComplement(group_c.meme_dna[[1]]))
-#sox9_open_pfm<-sox9_open_pfm[1:4,11:19]
-#sox9_open_motif<-new("pfm",mat=t(t(sox9_open_pfm[1:4,])*1/colSums(sox9_open_pfm[1:4,])), name="Sox9_Open_motif")
-#plotMotifLogo(sox9_open_motif)
-
-
-
-#plotMotifLogo(sox9_jaspar_motif)
-
-#plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,sox9_open_motif),revcomp=c(F,T)))
-
-#head(find_sites("Y",pfm=sox9_open_pfm))
-
-
-
-#system.time(sox9_open_pwm<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sox9_open_pfm,score="95%")))
-#sapply(sox9_open_pwm,length)
-#sox9_open_pwm<-sort(unlist(GRangesList(sox9_open_pwm)))
-
-#seqlevelsStyle(sox9_open_pwm)<-"UCSC"
-#rtracklayer::export(sox9_open_pwm,"sox9_open_pwm_score85.bed")
-
-
-## Heatmap
-```{r}
-#load("group_abc_sites.rdata")
-#g_p1<-rtracklayer::import("../data/dmrt1_chip_from_dmrt1_expressing_ovary_idx4_Project033_041317.fastq.dedup.unique.ucsc.bigWig",
-#                       selection=temp+2000)
-width<-2000
-#Ovary  
-g_8w<-rtracklayer::import("../data/ovary82_ctvdmrt1_Dmrt1_Project032_122716.fastq.bigWig",
-                       selection=temp+width)
-g_sox9_ovary<-rtracklayer::import("../data/ovary8w_ctvdmrt1_Sox9_Project032_122716.fastq.bigWig",
-                       selection=temp+width)
-
-#Testis
-g_dmrt1_sertoli<-rtracklayer::import("../data/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.bigWig",
-                       selection=temp+width)
-#g_sox9_sertoli<-rtracklayer::import("../data/sertoli_sox9_ChIP_index1_S1.dedup_pe_q55.bigWig",
-#                       selection=temp+width)
-#g_dmrt1_testis<-rtracklayer::import("../data/m8w_chip6_111223.dedup.unique.bigWig",
-#                       selection=temp+width)
-g_sox9_testis<-rtracklayer::import("../data/sox9_testis_idx512_Tue_Jan_28_2020_1800.bigWig",
-                       selection=temp+width)
-#Fresh ATAC
-#g_atac_sertoli<-rtracklayer::import("../data/N702.R1_trimmed.fastq.bigWig",selection=temp+with) #sertoli
-#g_atac_granulosa<-rtracklayer::import("../data/N704.R1_trimmed.fastq.bigWig",selection=temp+width) #granulosa
-#g_atac_sertoli<-rtracklayer::import("../data/P7_Sertoli_Rep1.bigWig",selection=temp+width) #sertoli
-#g_atac_granulosa<-rtracklayer::import("../data/Adult_Granulosa_Rep1.bigWig",selection=temp+width) #granulosa
-g_atac_sertoli<-rtracklayer::import("../data/sertoli_fresh_ATACseqPE_GW052319_Tue_Jan_28_2020_1807.bigWig",selection=temp+width) #sertoli
-g_atac_granulosa<-rtracklayer::import("../data/granulosa_fresh_ATACseqPE_GW052319_Tue_Jan_28_2020_2208.bigWig",selection=temp+width) #granulosa
-
-
-#length(dmrt1_pwm<-rtracklayer::import("../data/dmrt1_invitro_pwm_score85.bed"))
-#seqlevelsStyle(dmrt1_pwm)<-"NCBI"
-#length(sox9_pwm<-rtracklayer::import("../data/sox9_pwm_score85.bed"))
-#seqlevelsStyle(sox9_pwm)<-"NCBI"
-#length(sox9_open_pwm<-rtracklayer::import("sox9_open_pwm_score85.bed"))
-#seqlevelsStyle(sox9_open_pwm)<-"NCBI"
-
-mat_8w = normalizeToMatrix(g_8w, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-mat_sox9_ovary = normalizeToMatrix(g_sox9_ovary, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-      
-#mat_dmrt1_testis = normalizeToMatrix(g_dmrt1_testis, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-mat_dmrt1_sertoli = normalizeToMatrix(g_dmrt1_sertoli, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-mat_sox9_testis = normalizeToMatrix(g_sox9_testis, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-#mat_sox9_sertoli = normalizeToMatrix(g_sox9_sertoli, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-      
-      #atac
-mat_atac_granulosa = normalizeToMatrix(g_atac_granulosa, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-mat_atac_sertoli = normalizeToMatrix(g_atac_sertoli, temp, value_column = "score",  extend = width, mean_mode = "w0", w = 50)
-      
-mat_a_pwm=normalizeToMatrix(sertoli_dmrt1.sites, temp, value_column = "score", mean_mode = "absolute",
-         extend = width, w = 50, smooth = FALSE)
-#mat_klf4_pwm=normalizeToMatrix(klf4_pwm, temp, value_column = "score", mean_mode = "absolute",
-#         extend = width, w = 50, smooth = FALSE)
-mat_b_pwm=normalizeToMatrix(testis_sox9.sites, temp, value_column = "score", mean_mode = "absolute",
-         extend = width, w = 50, smooth = FALSE)
-#mat_c_pwm=normalizeToMatrix(group_c_sites, temp, value_column = "score", mean_mode = "absolute",
-#         extend = width, w = 50, smooth = FALSE)
-
-
-col_fun_8w= colorRamp2(quantile(mat_8w, c(0, 0.99)), c("white", "blue"))
-col_fun_sox9_ovary= colorRamp2(quantile(mat_8w, c(0, 0.99)), c("white", "green"))
-
-#col_fun_dmrt1_testis= colorRamp2(quantile(mat_dmrt1_testis, c(0, 0.99)), c("white", "blue"))
-col_fun_dmrt1_sertoli= colorRamp2(quantile(mat_dmrt1_sertoli, c(0, 0.99)), c("white", "blue"))
-col_fun_sox9_testis= colorRamp2(quantile(mat_sox9_testis, c(0, 0.99)), c("white", "green"))
-#col_fun_sox9_sertoli= colorRamp2(quantile(mat_sox9_sertoli, c(0, 0.99)), c("white", "green"))
-
-col_fun_atac_granulosa= colorRamp2(quantile(mat_atac_granulosa, c(0, 0.99)), c("white", "black"))
-col_fun_atac_sertoli= colorRamp2(quantile(mat_atac_sertoli, c(0, 0.99)), c("white", "black"))
-
-#col=c("red","green","blue","white")
-col=cbPalette[c(6,7,4,1)]
-svglite::svglite(paste0("Figure4E_invivo_chip_heatmap_",ts,".svg"),width=8,height=7.5)
-EnrichedHeatmap(mat_atac_granulosa, col = col_fun_atac_granulosa, name = "atac granulosa",column_title = "atac granulsa",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,1.2),yaxis = F)) ,use_raster=TRUE) +
-EnrichedHeatmap(mat_atac_sertoli, col = col_fun_atac_sertoli, name = "Atac sertoli",column_title = "atac sertoli",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,2),yaxis = F)) ,use_raster=TRUE) +
-EnrichedHeatmap(mat_8w, col = col_fun_8w, name = "8w OvaryDmrt1",column_title = "8w Ovary Dmrt1",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,50),yaxis = F)) ,use_raster=TRUE) +
-EnrichedHeatmap(mat_sox9_ovary, col = col_fun_sox9_ovary, name = "8w OvarySox9",column_title = "8w Ovary Sox9",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.25,12),yaxis = F)) ,use_raster=TRUE) +
-EnrichedHeatmap(mat_dmrt1_sertoli, col = col_fun_dmrt1_sertoli, name = "p7 Sertoli Dmrt1",column_title = "p7 Sertoli Dmrt1",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,30),yaxis = F)),use_raster=TRUE ) +
-
-EnrichedHeatmap(mat_sox9_testis, col = col_fun_sox9_testis, name = "Adult Testis Sox9",column_title = "Adult Testis Sox9",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.02,0.12),yaxis = F)),use_raster=TRUE ) +
-
-EnrichedHeatmap(mat_a_pwm, col = c("white", "black"),pos_line=F, name = "Dmrt1 Sites", axis_name_rot = 90,column_title = "Dmrt1 Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE ) +
-#EnrichedHeatmap(mat_b_pwm, col = c("white", "black"),pos_line=F, name = "Klf4 PWM", axis_name_rot = 90,column_title = "KLF4 Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
-#                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) +
-EnrichedHeatmap(mat_b_pwm, col = c("white", "black"),pos_line=F, name = "Sox9 Sites", axis_name_rot = 90,column_title = "Sox9 Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
-                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)),use_raster=TRUE ) 
-#EnrichedHeatmap(mat_c_pwm, col = c("white", "black"),pos_line=F, name = "Group C PWM", axis_name_rot = 90,column_title = "Group C Motifs",column_title_rot=90,split=temp$level,show_heatmap_legend = FALSE,
-#               top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),yaxis = F)) ) 
-dev.off()
-
-
-
-```
 
 
 

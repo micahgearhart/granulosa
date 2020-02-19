@@ -7,7 +7,6 @@ creative_commons: CC BY
 ---
 # Figure 1
 
-
 ## Use Fresh Sertoli / granulosa data to define somatic genes that are differentially expressed
 
 ```{r somatic_gonad,eval=T}
@@ -58,7 +57,7 @@ results_soma$f_granulosa<-f_soma_mean[match(rownames(results_soma),rownames(f_so
 #View(as.data.frame(results_soma))
 
 
-write.csv(results_soma,file="granulosa_vs_Sertoli_comparison.csv",quote=F)
+write.csv(results_soma,file=paste0("granulosa_vs_Sertoli_comparison_",ts,".csv"),quote=F)
 
 
 
@@ -100,12 +99,10 @@ dev.off()
 ```
 
 
-
 # Figure 1B - In Vivo ATACseq
 
 ## UpsetR comparison of ATACseq Peaklist
 ```{r vivo_ATACseq_upsetR,eval=T}
-
 
 length(vivo_atac<-reduce(c(peak_e105_atac_XX,peak_e105_atac_XY,peak_e135_atac_XX,peak_e135_atac_XY,peak_p23_atac_XX,peak_p7_atac_XY)))
 
@@ -449,7 +446,7 @@ as.data.frame(vivo_atac_subset[vivo_atac_subset %over% swl("chr12:76,086,000-76,
 
 
 # Figure 1B - Distance to Sert,Gran Genes
-```{r}
+```{r distance_to_dimorphic_genes,eval=T}
 s<-distanceToNearest(vivo_atac_subset,sertoli_transcripts,ignore.strand=TRUE)
 stopifnot(all.equal(queryHits(s),1:length(vivo_atac_subset)))  
 vivo_atac_subset$sertoli_distance<- NA 

@@ -6,10 +6,10 @@ editor_options:
 creative_commons: CC BY
 ---
 
-# Heatmap
-
-# Heatmap of ChIP and ATAC Peaks and Motifs  ****Move to FIGURE 3
+# Heatmap of ChIP and ATAC Peaks and Motifs  
 ```{r figure3_heatmap_setup,eval=T}
+load("genome_wide_motifs.rdata")
+
 cutoff<-1000
 
 #add fpkm for both gehes
@@ -50,7 +50,7 @@ head(sort(table(g_regions$nearest_granulosa_symbol),decreasing = TRUE),20)
 
 ```
 
-# Heatmap of ChIP and ATAC Peaks and Motifs  ****Move to FIGURE 3
+# Heatmap of ChIP and ATAC Peaks and Motifs  
 ```{r figure3_heatmap,eval=T}
 
 temp_1<-t_regions

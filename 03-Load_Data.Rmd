@@ -147,7 +147,7 @@ colnames(foxl2_pfm)<-NULL
 foxl2_jaspar_motif<-new("pfm",mat=t(t(foxl2_pfm[1:4,])*1/colSums(foxl2_pfm[1:4,])), name="Foxl2 MA0033.2")
 
 #download.file("http://jaspar.genereg.net/api/v1/matrix/MA1121.1.pfm",destfile = "MA1121.1.pfm")
-tead2_pfm<-as.matrix(read.table("MA1121.1.pfm",skit=1))
+tead2_pfm<-as.matrix(read.table("MA1121.1.pfm",skip=1))
 tead2_pfm <- apply (tead2_pfm, c (1, 2), function (x) {(as.integer(x))})
 rownames(tead2_pfm)<-c("A","C","G","T")
 colnames(tead2_pfm)<-NULL

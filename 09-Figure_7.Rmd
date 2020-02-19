@@ -45,8 +45,9 @@ Note:  This object, atac_dds, was counted based on the vivo_atac peaklist (n=119
 as.data.frame(colData(atac_dds))
 as.data.frame(colData(vitro_atac_dds<-atac_dds[,colData(atac_dds)$source=="vitro"]))
 
-colData(vitro_atac_dds)$sample<-colnames(assays(vitro_atac_counts)$counts) %>% gsub("\\.R1_trimmed\\.fastq\\.marked\\.bam","",.) %>% 
+colData(vitro_atac_dds)$sample<-rownames(colData(vitro_atac_dds)) %>% gsub("\\.R1_trimmed\\.fastq\\.marked\\.bam","",.) %>% 
   gsub("_R1_001\\.50bp_5prime_trimmed\\.fq\\.noMT\\.dedup\\.unique","",.) %>% gsub("_galore\\.dedup\\.unique","",.) %>% 
+  gsub("_R1\\.50bp_5prime\\.noMT\\.dedup\\.unique","",.) %>% 
   gsub("\\.marked\\.bam","",.) %>%  gsub("\\.bam","",.) 
 colData(vitro_atac_dds)$batch<-factor(c(rep("b1",6),rep("b2",6)),levels=c("b1","b2"))
 colData(vitro_atac_dds)$cag<-factor(c(rep("Sox9",3),rep("control",5),"Dmrt1","control",rep("Dmrt1",2)),levels=c("control","Sox9","Dmrt1"))
@@ -170,7 +171,8 @@ mcols(vitro_atac) %>% as.data.frame() %>%
 #  dplyr::filter((dmrt1_lfc > 0 & dmrt1_padj < 0.05) | (sox9_lfc > 0 & sox9_padj < 0.05)) %>% 
   dplyr::filter(!(is.na(sox9_lfc) | is.na(dmrt1_lfc))) %>% 
   ggplot(aes(x=dmrt1_lfc,y=sox9_lfc,colour=class)) + geom_point(alpha=1) + 
-  scale_colour_manual(values=c("black","blue","darkgreen","green")) + xlim(c(-7,7)) + ylim(c(-7,7)) +
+  # scale_colour_manual(values=c("black","blue","darkgreen","green")) +
+  xlim(c(-7,7)) + ylim(c(-7,7)) +
 #  geom_rect(aes(xmin=1,xmax=6,ymin=-6,ymax=6),color="red",alpha=0) +
 #  geom_rect(aes(xmin=-4,xmax=6,ymin=1,ymax=6),color="red",alpha=0) +
   geom_hline(colour="gray",yintercept=0)+geom_vline(colour="gray",xintercept=0)
@@ -291,6 +293,68 @@ data.frame(sort(table(temp_2$sox_binding,useNA="ifany"),decreasing=T))
 ```
 
 
+# Not included in Paper
+## MEME
+```{r invitro_meme,eval=F}
+length(vitro_subset_sox9<-subset(vitro_atac,vitro_atac$dmrt1_padj > 0.05 & vitro_atac$sox9_padj < 0.05 & sox9_lfc > 1 & dmrt1_lfc < 1))
+vitro_subset_dmrt1<-sample(subset(vitro_atac,vitro_atac$dmrt1_padj < 0.05 & vitro_atac$sox9_padj > 0.05 & sox9_lfc < 1 & dmrt1_lfc > 1),length(vitro_subset_sox9))
+length(vitro_subset_common<-subset(vitro_atac,vitro_atac$dmrt1_padj < 0.05 & vitro_atac$sox9_padj < 0.05 & sox9_lfc > 1 & dmrt1_lfc > 1))
+
+
+vitro_subset_sox9.dna<-getSeq(mm10,peak_center(vitro_subset_sox9)+75)
+names(vitro_subset_sox9.dna)<-paste0("vitro_subset_sox9_",1:length(vitro_subset_sox9))
+export(vitro_subset_sox9.dna,"vitro_subset_sox9_151bp.fasta")
+
+vitro_subset_dmrt1.dna<-getSeq(mm10,peak_center(vitro_subset_dmrt1)+75)
+names(vitro_subset_dmrt1.dna)<-paste0("vitro_subset_dmrt1_",1:length(vitro_subset_dmrt1))
+export(vitro_subset_dmrt1.dna,"vitro_subset_dmrt1_151bp.fasta")
+
+vitro_subset_common.dna<-getSeq(mm10,peak_center(vitro_subset_common)+75)
+names(vitro_subset_common.dna)<-paste0("vitro_subset_common_",1:length(vitro_subset_common))
+export(vitro_subset_common.dna,"vitro_subset_common_151bp.fasta")
+```
+
+# MEME IN
+```{r invitro_meme_import,eval=F}
+vitro_subset_sox9.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_sox9_151bp.txt")
+x<-lengths(vitro_subset_sox9.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_sox9_151bp.fasta"),unlist(vitro_subset_sox9.meme$motifList)),vitro_subset_sox9.meme$motifList))
+names(vitro_subset_sox9.meme_dna)<-paste0("Motif ",1:length(vitro_subset_sox9.meme$motifList),", p-value: ",vitro_subset_sox9.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(vitro_subset_sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Alone")
+
+vitro_subset_dmrt1.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_dmrt1_151bp.txt")
+x<-lengths(vitro_subset_dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_dmrt1_151bp.fasta"),unlist(vitro_subset_dmrt1.meme$motifList)),vitro_subset_dmrt1.meme$motifList))
+names(vitro_subset_dmrt1.meme_dna)<-paste0("Motif ",1:length(vitro_subset_dmrt1.meme$motifList),", p-value: ",vitro_subset_dmrt1.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(vitro_subset_dmrt1.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 Alone")
+
+vitro_subset_common.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_common_151bp.txt")
+x<-lengths(vitro_subset_common.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_common_151bp.fasta"),unlist(vitro_subset_common.meme$motifList)),vitro_subset_common.meme$motifList))
+names(vitro_subset_common.meme_dna)<-paste0("Motif ",1:length(vitro_subset_common.meme$motifList),", p-value: ",vitro_subset_common.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(vitro_subset_common.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Common to Dmrt1/Sox9")
+
+#GroupA motif
+vitro_subset_sox9_pfm<-consensusMatrix(vitro_subset_sox9.meme_dna[[1]])
+vitro_subset_sox9_pfm<-vitro_subset_sox9_pfm[1:4,]
+vitro_subset_sox9_motif<-new("pfm",mat=t(t(vitro_subset_sox9_pfm[1:4,])*1/colSums(vitro_subset_sox9_pfm[1:4,])), name="vitro_subset_sox9_Motif")
+
+#GroupB motif
+vitro_subset_dmrt1_pfm<-consensusMatrix(reverseComplement(vitro_subset_dmrt1.meme_dna[[1]]))
+vitro_subset_dmrt1_pfm<-vitro_subset_dmrt1_pfm[1:4,]
+vitro_subset_dmrt1_motif<-new("pfm",mat=t(t(vitro_subset_dmrt1_pfm[1:4,])*1/colSums(vitro_subset_dmrt1_pfm[1:4,])), name="vitro_subset_dmrt1_Motif")
+
+#Scan for GroupC motif
+vitro_subset_common_pfm<-consensusMatrix(reverseComplement(vitro_subset_common.meme_dna[[1]]))
+vitro_subset_common_pfm<-vitro_subset_common_pfm[1:4,]
+vitro_subset_common_motif<-new("pfm",mat=t(t(vitro_subset_common_pfm[1:4,])*1/colSums(vitro_subset_common_pfm[1:4,])), name="vitro_subset_common_Motif")
+
+
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,vitro_subset_sox9_motif,vitro_subset_common_motif,vitro_subset_dmrt1_motif,dmrt1_invitro_motif),revcomp=c(F,F,F,F,F)))
+
+```
+
+
 ```{r in_vitro_heatmap_generate_plot,eval=T}
 #atac
 seqlevelsStyle(temp_2)<-"NCBI"
@@ -337,9 +401,9 @@ mat_p62 = normalizeToMatrix(g_sox9_cagdmrt1, temp_2, value_column = "score",  ex
 mat_k27acCnt = normalizeToMatrix(g_k27acCnt, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
 mat_k27acExp = normalizeToMatrix(g_k27acExp, temp_2, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
 
-seqlevelsStyle(group_a_sites)<-"UCSC"
-seqlevelsStyle(group_b_sites)<-"UCSC"
-seqlevelsStyle(group_c_sites)<-"UCSC"
+#seqlevelsStyle(group_a_sites)<-"UCSC"
+#seqlevelsStyle(group_b_sites)<-"UCSC"
+#seqlevelsStyle(group_c_sites)<-"UCSC"
 #mat_a_pwm=normalizeToMatrix(group_a_sites, temp_2, value_column = "score", mean_mode = "absolute",
 #         extend = width, w = 50, smooth = FALSE)
 #mat_b_pwm=normalizeToMatrix(group_b_sites, temp_2, value_column = "score", mean_mode = "absolute",
@@ -403,64 +467,5 @@ dev.off()
 ```
 
 
-# Not included in Paper
-## MEME
-```{r invitro_meme,eval=F}
-length(vitro_subset_sox9<-subset(vitro_atac,vitro_atac$dmrt1_padj > 0.05 & vitro_atac$sox9_padj < 0.05 & sox9_lfc > 1 & dmrt1_lfc < 1))
-vitro_subset_dmrt1<-sample(subset(vitro_atac,vitro_atac$dmrt1_padj < 0.05 & vitro_atac$sox9_padj > 0.05 & sox9_lfc < 1 & dmrt1_lfc > 1),length(vitro_subset_sox9))
-length(vitro_subset_common<-subset(vitro_atac,vitro_atac$dmrt1_padj < 0.05 & vitro_atac$sox9_padj < 0.05 & sox9_lfc > 1 & dmrt1_lfc > 1))
 
-
-vitro_subset_sox9.dna<-getSeq(mm10,peak_center(vitro_subset_sox9)+75)
-names(vitro_subset_sox9.dna)<-paste0("vitro_subset_sox9_",1:length(vitro_subset_sox9))
-export(vitro_subset_sox9.dna,"vitro_subset_sox9_151bp.fasta")
-
-vitro_subset_dmrt1.dna<-getSeq(mm10,peak_center(vitro_subset_dmrt1)+75)
-names(vitro_subset_dmrt1.dna)<-paste0("vitro_subset_dmrt1_",1:length(vitro_subset_dmrt1))
-export(vitro_subset_dmrt1.dna,"vitro_subset_dmrt1_151bp.fasta")
-
-vitro_subset_common.dna<-getSeq(mm10,peak_center(vitro_subset_common)+75)
-names(vitro_subset_common.dna)<-paste0("vitro_subset_common_",1:length(vitro_subset_common))
-export(vitro_subset_common.dna,"vitro_subset_common_151bp.fasta")
-```
-
-# MEME IN
-```{r invitro_meme_import,eval=T}
-vitro_subset_sox9.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_sox9_151bp.txt")
-x<-lengths(vitro_subset_sox9.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_sox9_151bp.fasta"),unlist(vitro_subset_sox9.meme$motifList)),vitro_subset_sox9.meme$motifList))
-names(vitro_subset_sox9.meme_dna)<-paste0("Motif ",1:length(vitro_subset_sox9.meme$motifList),", p-value: ",vitro_subset_sox9.meme$motifEvalues," ( ",x," sites )")
-ggplot() + geom_logo(lapply(vitro_subset_sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 Alone")
-
-vitro_subset_dmrt1.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_dmrt1_151bp.txt")
-x<-lengths(vitro_subset_dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_dmrt1_151bp.fasta"),unlist(vitro_subset_dmrt1.meme$motifList)),vitro_subset_dmrt1.meme$motifList))
-names(vitro_subset_dmrt1.meme_dna)<-paste0("Motif ",1:length(vitro_subset_dmrt1.meme$motifList),", p-value: ",vitro_subset_dmrt1.meme$motifEvalues," ( ",x," sites )")
-ggplot() + geom_logo(lapply(vitro_subset_dmrt1.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Dmrt1 Alone")
-
-vitro_subset_common.meme<-TFBSTools:::parseMEMEOutput412("vitro_subset_common_151bp.txt")
-x<-lengths(vitro_subset_common.meme_dna<-relist(getSeq(readDNAStringSet("vitro_subset_common_151bp.fasta"),unlist(vitro_subset_common.meme$motifList)),vitro_subset_common.meme$motifList))
-names(vitro_subset_common.meme_dna)<-paste0("Motif ",1:length(vitro_subset_common.meme$motifList),", p-value: ",vitro_subset_common.meme$motifEvalues," ( ",x," sites )")
-ggplot() + geom_logo(lapply(vitro_subset_common.meme_dna,as.character),seq_type='dna') + theme_logo() +
-  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Common to Dmrt1/Sox9")
-
-#GroupA motif
-vitro_subset_sox9_pfm<-consensusMatrix(vitro_subset_sox9.meme_dna[[1]])
-vitro_subset_sox9_pfm<-vitro_subset_sox9_pfm[1:4,]
-vitro_subset_sox9_motif<-new("pfm",mat=t(t(vitro_subset_sox9_pfm[1:4,])*1/colSums(vitro_subset_sox9_pfm[1:4,])), name="vitro_subset_sox9_Motif")
-
-#GroupB motif
-vitro_subset_dmrt1_pfm<-consensusMatrix(reverseComplement(vitro_subset_dmrt1.meme_dna[[1]]))
-vitro_subset_dmrt1_pfm<-vitro_subset_dmrt1_pfm[1:4,]
-vitro_subset_dmrt1_motif<-new("pfm",mat=t(t(vitro_subset_dmrt1_pfm[1:4,])*1/colSums(vitro_subset_dmrt1_pfm[1:4,])), name="vitro_subset_dmrt1_Motif")
-
-#Scan for GroupC motif
-vitro_subset_common_pfm<-consensusMatrix(reverseComplement(vitro_subset_common.meme_dna[[1]]))
-vitro_subset_common_pfm<-vitro_subset_common_pfm[1:4,]
-vitro_subset_common_motif<-new("pfm",mat=t(t(vitro_subset_common_pfm[1:4,])*1/colSums(vitro_subset_common_pfm[1:4,])), name="vitro_subset_common_Motif")
-
-
-plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,vitro_subset_sox9_motif,vitro_subset_common_motif,vitro_subset_dmrt1_motif,dmrt1_invitro_motif),revcomp=c(F,F,F,F,F)))
-
-```
 

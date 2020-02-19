@@ -113,11 +113,11 @@ dev.off()
 #nt<-log2(counts(dds_gonad_subset,normalized=TRUE)+1)
 #colnames(nt)<-paste(colData(dds_gonad_subset)$time,colData(dds_gonad_subset)$sox,colData(dds_gonad_subset)$gene,sep="_")
 #nt.pca<-prcomp(t(nt))
-dds_gonad_subset_rlog.pca<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),returnData=T,ntop=Inf)
+dds_gonad_subset.pca<-plotPCA.DESeqTransform(normTransform(dds_gonad_subset),intgroup=c("userid","time","gene","sox"),returnData=T,ntop=Inf)
 #plot(dds_gonad_subset_rlog.pca[,c(1,2)],col=ifelse(stringr::str_detect(rownames(dds_gonad_subset_rlog.pca),"WTm"),"red","black"),pch=16)
 topN <- 10
 
-nt.rot<-attr(dds_gonad_subset_rlog.pca,"rotation")
+nt.rot<-attr(dds_gonad_subset.pca,"rotation")
 #pc1
 nt.rot1<-as.data.frame(nt.rot[order(abs(nt.rot[,1]),decreasing=TRUE),])[,1,drop=F]
 head(left_join(tibble::rownames_to_column(nt.rot1,var="gene_id"),symbols,by="gene_id"),topN) 
@@ -141,7 +141,7 @@ head(left_join(tibble::rownames_to_column(nt.rot3,var="gene_id"),symbols,by="gen
 
 
 # Figure 4B - Foxl2 and Defb36 timecourse
-```{r}
+```{r foxl2_defb32_timecourse,eval=T}
 
 gg_sox_fpkm("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
 svglite::svglite(paste0("gonad_Defb36_expression_",ts,".svg"),width=5,height=3)
@@ -165,14 +165,14 @@ nrow(temp<-f_gonad_mean[rownames(dds_gonad_subset),])
 
 
 
-
-plotPCA(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf) + 
+#Look at PC3
+plotPCA(normTransform(dds_gonad_subset),intgroup=c("userid","time","gene","sox"),ntop=Inf) + 
   theme_bw() +  ggtitle("Gonad Data - Somatic Subset")
 
-g1r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(1,2)) + theme_bw() + theme(legend.position = "none")
-g2r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(3,1)) + theme_bw() + theme(legend.position = "none")
-g3r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(3,2)) + theme_bw() + theme(legend.position = "none")
-g4r<-plotPCA.DESeqTransform(dds_gonad_subset_rlog,intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(2,3)) + theme_bw() 
+g1r<-plotPCA.DESeqTransform(normTransform(dds_gonad_subset),intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(1,2)) + theme_bw() + theme(legend.position = "none")
+g2r<-plotPCA.DESeqTransform(normTransform(dds_gonad_subset),intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(3,1)) + theme_bw() + theme(legend.position = "none")
+g3r<-plotPCA.DESeqTransform(normTransform(dds_gonad_subset),intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(3,2)) + theme_bw() + theme(legend.position = "none")
+g4r<-plotPCA.DESeqTransform(normTransform(dds_gonad_subset),intgroup=c("userid","time","gene","sox"),ntop=Inf,dims=c(2,3)) + theme_bw() 
 grid.arrange(g1r,g3r,g_legend(g4r),g2r, ncol=2,top="Gonad Data - Somatic Subset")
 
 #pheatmap(sweep(temp,1,apply(temp, 1, mean),"-"),cluster_cols=F,show_rownames = F,scale="none",col=colors)
@@ -184,7 +184,7 @@ grid.arrange(g1r,g3r,g_legend(g4r),g2r, ncol=2,top="Gonad Data - Somatic Subset"
 ```{r}
 
 # Compare Sox89 wt vs null as a categorial variable and look for an interaction term
-colData(dds_ovary_cat<-dds_ovary[,colData(dds_ovary)$sox==0 | colData(dds_ovary)$sox==4])
+colData(dds_ovary_cat<-dds_gonad[,colData(dds_gonad)$time=="ovary" & (colData(dds_gonad)$sox==0 | colData(dds_gonad)$sox==4)])
 colData(dds_ovary_cat)$sox<-factor(ifelse(colData(dds_ovary_cat)$sox==4,"sox89wt","sox89null"),levels=c("sox89wt","sox89null"))
 design(dds_ovary_cat)<- ~ gene + sox + gene:sox
 as.data.frame(colData(dds_ovary_cat))
@@ -231,7 +231,7 @@ length(sex_det_list<-unique(c(embryonic_network_full,en_list,go_list,vb_list)))
 
 
 ## Figure 1D - Heatmap of genes that are Sox8/9 dependent that are implicated in sex determination
-```{r}
+```{r heatmap_embryonic_genes,eval=T}
 length(x1<-rownames(subset(res_dds_ovary_wt, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
 length(y1<-rownames(subset(res_dds_ovary_null, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
 length(z1<- x1[x1 %in% y1])
@@ -281,8 +281,39 @@ dev.off()
 
 
 # Figure 4E - In Vivo ATAC/ChIP/Motifs
-## Heatmap
+## ChIP peaklist
 ```{r}
+
+length(ovary8w_ctvdmrt1_dmrt1)
+
+(qs<-quantile(ovary8w_ctvdmrt1_dmrt1$score, c(0, 0.25, 0.5, 0.75, 0.99)))
+plot(sort(ovary8w_ctvdmrt1_dmrt1$score,decreasing=T),pch=16,cex=0.5,col="red")
+abline(h=qs,col="black")
+
+length(ovary8w_ctvdmrt1_dmrt1_top<-ovary8w_ctvdmrt1_dmrt1[ovary8w_ctvdmrt1_dmrt1$score > qs[3] & ovary8w_ctvdmrt1_dmrt1$score < qs[5]])
+
+length(ovary_ctvdmrt1_sox9) # also 8w
+(qs<-quantile(ovary_ctvdmrt1_sox9$score, c(0, 0.25, 0.5, 0.75, 0.99)))
+plot(sort(ovary_ctvdmrt1_sox9$score,decreasing=T),pch=16,cex=0.5,col="blue")
+abline(h=qs,col="black")
+length(ovary_ctvdmrt1_sox9_top<-ovary_ctvdmrt1_sox9[ovary_ctvdmrt1_sox9$score > qs[3] & ovary_ctvdmrt1_sox9$score < qs[5]])
+
+
+
+length(temp_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1_top[!ovary8w_ctvdmrt1_dmrt1_top %over% bl_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
+length(temp_sox9<-keepSeqlevels(ovary_ctvdmrt1_sox9_top[!ovary_ctvdmrt1_sox9_top %over% bl_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
+
+
+
+#Focus on differentially ATAC-able
+length(temp_dmrt1<-temp_dmrt1[temp_dmrt1 %over% vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]])
+length(temp_sox9<-temp_sox9[temp_sox9 %over% vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]])
+
+
+```
+
+## Heatmap
+```{r heatmap_atac_chip_motifs,eval=T}
 # Remove regions that have mega-copy Dmrt1 sites
 length(temp_dmrt1<-temp_dmrt1[countOverlaps(peak_center(temp_dmrt1)+100,dmrt1_pwm) < 8 & countOverlaps(peak_center(temp_dmrt1)+100,sox9_pwm) < 15])
 length(temp_sox9<-temp_sox9[countOverlaps(peak_center(temp_sox9)+100,dmrt1_pwm) < 8 & countOverlaps(peak_center(temp_sox9)+100,sox9_pwm) < 15])
@@ -348,7 +379,7 @@ export(group_c.dna,"group_c_151bp.fasta")
 ```
 
 
-```{r import_meme,eval=T}
+```{r import_meme_groups,eval=T}
 
 group_a.meme<-TFBSTools:::parseMEMEOutput412("group_a_sampled_151bp.txt")
 x<-lengths(group_a.meme_dna<-relist(getSeq(readDNAStringSet("group_a_sampled_151bp.fasta"),unlist(group_a.meme$motifList)),group_a.meme$motifList))

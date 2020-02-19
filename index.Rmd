@@ -14,9 +14,11 @@ site: bookdown::bookdown_site
 always_allow_html: yes
 ---
 
-# index
+# Abstract
 
-To compile this example to PDF, you need XeLaTeX. You are recommended to install TinyTeX (which includes XeLaTeX): <https://yihui.name/tinytex/>.
+Mammalian sex determination starts when bipotential progenitor cells of the fetal gonad adopt the Sertoli (male) or granulosa (female) fate, depending on expression of SRY.  Differentiation of these cells involves extensive divergence in chromatin state and gene expression, reflecting their distinct roles in support of sexual differentiation and gametogenesis.  Surprisingly, differentiated gonadal sexual cell fates require active maintenance through postnatal life to prevent transdifferentiation and can be reprogrammed by ectopic expression of the male sex regulator DMRT1 in the adult gonad.  Here we examine how DMRT1 reprograms sexual cell fate.  We first define postnatal Sertoli- and granulosa-biased gene expression programs and identify cell type-specific differentially accessible chromatin regions (DARs) associated with differentially expressed genes.  Using a conditional transgene we find that DMRT1 only partially reprograms the ovarian transcriptome in the absence of SOX9 and its paralog SOX8, indicating that these factors cooperate with DMRT1.  ChIP-seq shows that DMRT1 induces formation of DARs that it binds with SOX9, and that DMRT1 is required for binding of SOX9 to many of these sites.  We suggest that DMRT1 can act as a pioneer factor to open chromatin and allow binding of SOX9, which then cooperates with DMRT1 to reprogram sexual cell fate. 
+
+
 
 ```{r include=FALSE}
 # automatically create a bib database for R packages

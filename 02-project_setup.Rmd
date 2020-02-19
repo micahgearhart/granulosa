@@ -97,9 +97,9 @@ c2c<-lighten(lighten(lighten(c2d,1.0),1.0),1.1)
 
 c3d<-cbPalette[6] #cag-Dmrt1
 #c3a<-"#549EC9"
-c3a<-lighten(lighten(lighten(c3a,1.1),1.1),1.1)
-c3b<-lighten(lighten(lighten(c3a,1.0),1.1),1.1)
-c3c<-lighten(lighten(lighten(c3a,1.0),1.0),1.1)
+c3a<-lighten(lighten(lighten(c3d,1.1),1.1),1.1)
+c3b<-lighten(lighten(lighten(c3d,1.0),1.1),1.1)
+c3c<-lighten(lighten(lighten(c3d,1.0),1.0),1.1)
 
 
 gg_plotCounts<-function(x="ENSMUSG00000024837",d=dds_invitro,returnData=F,fpkm=F) {

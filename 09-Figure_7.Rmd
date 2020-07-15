@@ -207,9 +207,47 @@ dev.off()
 
 ```
 
+# DMRT1-dependent SOX9 sites
+```{r}
+
+#length(x<-gran_ctvdmrt1_sox9[gran_ctvdmrt1_sox9 %over% gran_ctvdmrt1_dmrt1 & !gran_ctvdmrt1_sox9 %over% gran_ctvsox9_sox9])
+length(x<-gran_ctvdmrt1_sox9[gran_ctvdmrt1_sox9 %over% gran_ctvdmrt1_dmrt1])
+length(sertoli_dmrt1.sites)
+length(testis_sox9.sites)
+
+suppressWarnings(length(x<-x[x %over% sertoli_dmrt1.sites & x %over% testis_sox9.sites]))  #warnings from MT & Y
+summary(width(x))
+
+suppressWarnings(length(sertoli_dmrt1.sites_x<-sertoli_dmrt1.sites[sertoli_dmrt1.sites %over% x]))
+suppressWarnings(length(testis_sox9.sites_x<-testis_sox9.sites[testis_sox9.sites %over% x]))
+d<-distanceToNearest(testis_sox9.sites_x,sertoli_dmrt1.sites_x,ignore.strand=TRUE)
+length(d)
+stopifnot(all.equal(1:length(testis_sox9.sites_x),queryHits(d)))
+
+testis_sox9.sites_x$dist_to_dmrt1<-mcols(d)$distance
+head(testis_sox9.sites_x)
+summary(mcols(d)$distance)
+sum(mcols(d)$distance==0)
+
+
+find_site_overlap<-function(gr) {min(suppressWarnings(testis_sox9.sites_x[testis_sox9.sites_x %over% gr]$dist_to_dmrt1))}
+find_site_overlap(x["peak_22541"])
+x$min_dist<- -2
+for(i in seq_along(1:length(x))) {x[i]$min_dist<-find_site_overlap(x[i])}
+summary(x$min_dist)
+sum(x$min_dist==0) # number overlapping
+sum(x$min_dist!=0) # number not overlapping
+
+median(x[x$min_dist!=0]$min_dist)
+
+#export(sertoli_dmrt1.sites_x,"sertoli_dmrt1.sites_x.bed")
+#export(testis_sox9.sites_x,"testis_sox9.sites_x.bed")
+#export(x,"x.bed")
+```
+
 # Figure 7D - Add ChIP to see if SOX9 binding is DMRT1 dependent
 ```{r in_vitro_heatmap,eval=T}
-
+data.frame(sort(table(vitro_atac[vitro_atac$Sertoli_specific]$class),decreasing=T))
 length(temp<-vitro_atac[(vitro_atac$class=="DMRT1 DAR - UP" | vitro_atac$class=="COMMON DAR - UP" | vitro_atac$class=="SOX9 DAR - UP" ) & vitro_atac$Sertoli_specific])
 length(temp$chip_ctvdmrt1_DMRT1 <-temp %over% gran_ctvdmrt1_dmrt1)
 length(temp$chip_ctvdmrt1_SOX9 <-temp %over% gran_ctvdmrt1_sox9)

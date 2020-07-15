@@ -13,15 +13,15 @@ as.data.frame(colData(dds_invitro<-dds[,!str_detect(colData(dds)$time,"ovary|tes
 dds_invitro<-estimateSizeFactors(dds_invitro)
 
 svglite::svglite(paste0("vitro_Dmrt1_expression_",ts,".svg"),width=5,height=3)
-gg_plotCounts("Dmrt1",d=dds_invitro,fpkm=T)
+gg_plotCounts("Dmrt1",d=dds_invitro,fpkm=T,bar=T)
 dev.off()
 
 svglite::svglite(paste0("vitro_Sox9_expression_",ts,".svg"),width=5,height=3)
-gg_plotCounts("Sox9",d=dds_invitro,fpkm=T)
+gg_plotCounts("Sox9",d=dds_invitro,fpkm=T,bar=T)
 dev.off()
 
 svglite::svglite(paste0("vitro_Plppr4_expression_",ts,".svg"),width=5,height=3)
-gg_plotCounts("Plppr4",d=dds_invitro,fpkm=T)
+gg_plotCounts("Plppr4",d=dds_invitro,fpkm=T,bar=T)
 dev.off()
 
 ```
@@ -49,6 +49,56 @@ figure_6b<-plotPCA(normTransform(dds_invitro),intgroup=c("gene","time"),ntop = 5
 svglite::svglite(paste0("Figure6b_in_vitro_PCA_",ts,".svg"),width=5,height=4.5)
 figure_6b
 dev.off()
+```
+
+
+```{r}
+#Export version without Log2 for Table
+dds_invitro_full<-dds[,!str_detect(colData(dds)$time,"ovary|testis") ]
+
+f_invitro_mean_symbol <- as.data.frame(fpkm(dds_invitro_full)) %>% 
+#  dplyr::filter(mgi_symbol %in% c(goi,goi2)) %>% 
+  tibble::rownames_to_column(var="ensembl") %>%
+  tidyr::gather(sample,fpkm,-ensembl) %>%
+  dplyr::mutate(time=colData(dds_invitro_full)[sample,]$time) %>%
+  dplyr::mutate(gene=colData(dds_invitro_full)[sample,]$gene) %>%
+  dplyr::mutate(sample=paste(time,gene,sep="_")) %>% 
+  dplyr::group_by(sample,ensembl) %>% 
+    dplyr::summarize(mean_fpkm=round(mean(fpkm),3)) %>% 
+    dplyr::select(sample,ensembl,mean_fpkm) %>% 
+    ungroup() %>% 
+  tidyr::spread(sample,mean_fpkm) %>% as.data.frame()
+
+f_invitro_mean_symbol<-f_invitro_mean_symbol[apply(f_invitro_mean_symbol[,2:17],1,sum) > 0,]
+f_invitro_mean_symbol$Symbol<-symbols[match(f_invitro_mean_symbol$ensembl,symbols$gene_id),]$gene_name
+
+f_invitro_mean_symbol <- dplyr::rename(f_invitro_mean_symbol,
+                                        "Ensembl GeneID" = "ensembl",
+                                        "Freshly Isolated Granulosa Cells" = "fresh_control",
+                                        "Freshly Isolated Sertoli Cells" = "fresh_sertoli",
+                                        "Control 0 DPTx" = "0h_control",
+                                        "Control 1 DPTx" = "24h_control",
+                                        "Control 2 DPTx" = "48h_control",
+                                        "Control 6 DPTx" = "7d_control",
+                                        "CAG-Sox9 0 DPTx" = "0h_sox9",
+                                        "CAG-Sox9 1 DPTx" = "24h_sox9",
+                                        "CAG-Sox9 2 DPTx" = "48h_sox9",
+                                        "CAG-Sox9 6 DPTx" = "7d_sox9",
+                                        "CAG-Dmrt1 0 DPTx" = "0h_dmrt1",
+                                        "CAG-Dmrt1 1 DPTx" = "24h_dmrt1",
+                                        "CAG-Dmrt1 2 DPTx" = "48h_dmrt1",
+                                        "CAG-Dmrt1 6 DPTx" = "7d_dmrt1",
+                                        "Sox8-/-;Sox9+/-;CAG-Dmrt1 6 DPTx" = "7d_S01_dmrt1",
+                                        "Sox8-/-;Sox9-/-;CAG-Dmrt1 6 DPTx" = "7d_S00_dmrt1") %>%
+  dplyr::select("Ensembl GeneID","Symbol", "Freshly Isolated Granulosa Cells","Freshly Isolated Sertoli Cells",
+                "Control 0 DPTx", "Control 1 DPTx", "Control 2 DPTx", "Control 6 DPTx",
+                "CAG-Sox9 0 DPTx", "CAG-Sox9 1 DPTx", "CAG-Sox9 2 DPTx", "CAG-Sox9 6 DPTx",
+                "CAG-Dmrt1 0 DPTx", "CAG-Dmrt1 1 DPTx", "CAG-Dmrt1 2 DPTx", "CAG-Dmrt1 6 DPTx",
+                "Sox8-/-;Sox9+/-;CAG-Dmrt1 6 DPTx", "Sox8-/-;Sox9-/-;CAG-Dmrt1 6 DPTx")
+
+#View(f_invitro_mean_symbol)
+write.csv(f_invitro_mean_symbol,"Lindeman_et_al_Mean_FPKMs_for_Granulosa_Sertoli_and_Cultured_Granulosa_Cells.csv",row.names=F,quote=F)
+dim(f_invitro)
 ```
 
 
@@ -115,7 +165,7 @@ gg_plotCounts7d("Sox8",d=dds_7dko,fpkm=TRUE)
 gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE)
 
 svglite::svglite(paste0("vitro_Plppr4_expression_wKO_",ts,".svg"),width=4.5,height=7)
-gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE)
+gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE,bar=T)
 dev.off()
 ```
 

@@ -51,9 +51,38 @@ f_gonad_mean <- f_gonad %>%
 colnames(f_gonad_mean)<-c("Ovary Sox Null","Ovary WT","Cag-Dmrt1 Sox Null","Cag-Dmrt1 Sox=1","Cag-Dmrt1 Sox=2","Cag-Dmrt1 Sox=4", "Testis WT")
 f_gonad_mean<-f_gonad_mean[,c("Ovary WT","Ovary Sox Null","Cag-Dmrt1 Sox Null","Cag-Dmrt1 Sox=1","Cag-Dmrt1 Sox=2","Cag-Dmrt1 Sox=4", "Testis WT")]
 
-f_gonad_mean_symbol<-f_gonad_mean
-f_gonad_mean_symbol$symbol<-symbols[match(rownames(f_gonad_mean_symbol),symbols$gene_id),]$gene_name
-#View(f_gonad_mean_mgi)
+#Export version without Log2 for Table
+f_gonad_mean_symbol <- as.data.frame(fpkm(dds_gonad[,colData(dds_gonad)$batch!="P006"])) %>% 
+#  dplyr::filter(mgi_symbol %in% c(goi,goi2)) %>% 
+  tibble::rownames_to_column(var="ensembl") %>%
+  tidyr::gather(sample,fpkm,-ensembl) %>%
+  dplyr::mutate(sox8=colData(dds_gonad)[sample,]$sox8) %>%
+  dplyr::mutate(sox9=colData(dds_gonad)[sample,]$sox9) %>%
+  dplyr::mutate(gene=colData(dds_gonad)[sample,]$gene) %>%
+  dplyr::mutate(sample=paste(gene,sox8,sox9,sep="_")) %>% 
+  dplyr::group_by(sample,ensembl) %>% 
+    dplyr::summarize(mean_fpkm=round(mean(fpkm),3)) %>% 
+    dplyr::select(sample,ensembl,mean_fpkm) %>% 
+    ungroup() %>% 
+  tidyr::spread(sample,mean_fpkm) %>% as.data.frame()
+
+
+f_gonad_mean_symbol<-f_gonad_mean_symbol[apply(f_gonad_mean_symbol[,2:9],1,sum) > 0,]
+f_gonad_mean_symbol$Symbol<-symbols[match(f_gonad_mean_symbol$ensembl,symbols$gene_id),]$gene_name
+f_gonad_mean_symbol<-dplyr::rename(f_gonad_mean_symbol,
+                                   "Ensembl GeneID" = "ensembl",
+                                   "Wild Type Ovary" = "control_2_2",
+                                   "CAG-Dmrt1 Ovary" = "dmrt1_2_2",
+                                   "Sox8-/-;Sox9-/- Ovary" = "control_0_0",
+                                   "Sox8-/-;Sox9-/-;CAG-Dmrt1 Ovary" = "dmrt1_0_0",
+                                   "Sox8-/-;Sox9+/-;CAG-Dmrt1 Ovary" = "dmrt1_0_1",
+                                   "Sox8+/-;Sox9-/-;CAG-Dmrt1 Ovary" = "dmrt1_1_0",
+                                   "Sox8+/-;Sox9+/-;CAG-Dmrt1 Ovary" = "dmrt1_1_1",
+                                   "Sox8+/+;Sox9-/-;CAG-Dmrt1 Ovary" = "dmrt1_2_0") %>%
+  dplyr::select("Ensembl GeneID","Symbol","Wild Type Ovary","Sox8-/-;Sox9-/- Ovary","CAG-Dmrt1 Ovary","Sox8-/-;Sox9-/-;CAG-Dmrt1 Ovary","Sox8-/-;Sox9+/-;CAG-Dmrt1 Ovary","Sox8+/-;Sox9-/-;CAG-Dmrt1 Ovary", "Sox8+/-;Sox9+/-;CAG-Dmrt1 Ovary","Sox8+/+;Sox9-/-;CAG-Dmrt1 Ovary") 
+
+#View(f_gonad_mean_symbol)
+write.csv(f_gonad_mean_symbol,"Lindeman_et_al_Whole_Gonad_Mean_FPKMs.csv",row.names=F,quote=F)
 dim(f_gonad)
 #sum(high_fpkm<-apply(f_gonad_mean,1,max) > log2(2.5))
 length(high_gonad_fpkm<-rownames(f_gonad_mean[apply(f_gonad_mean,1,max) > log2(2.5),]))
@@ -61,7 +90,7 @@ table(symbols[symbols$gene_id %in% high_gonad_fpkm,"chr"])
 ```
 
 
-## subset to soma DE & fpkm_high & autosomes
+## Subset to soma DE & fpkm_high & autosomes
 ```{r gonad_subset_pca,eval=T}
 
 # get autosomal genes
@@ -140,24 +169,24 @@ head(left_join(tibble::rownames_to_column(nt.rot3,var="gene_id"),symbols,by="gen
 ```
 
 
-# Figure 4B - Foxl2 and Defb36 timecourse
+## Figure 4B - Foxl2 and Defb36 timecourse
 ```{r foxl2_defb32_timecourse,eval=T}
 
-gg_sox_fpkm("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Defb36",d=dds_gonad_subset,bar=T)+theme(axis.text.x=element_blank())+ylab("")
 svglite::svglite(paste0("gonad_Defb36_expression_",ts,".svg"),width=5,height=3)
-gg_sox_fpkm("Defb36",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Defb36",d=dds_gonad_subset,bar=T)+theme(axis.text.x=element_blank())+ylab("")
 dev.off()
 
-gg_sox_fpkm("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Foxl2",d=dds_gonad_subset,bar=T)+theme(axis.text.x=element_blank())+ylab("")
 
 svglite::svglite(paste0("gonad_Foxl2_expression_",ts,".svg"),width=5,height=3)
-gg_sox_fpkm("Foxl2",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Foxl2",d=dds_gonad_subset,bar=T)+theme(axis.text.x=element_blank())+ylab("")
 dev.off()
 
-gg_sox_fpkm("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Dmrt1",d=dds_gonad_subset,bar=T)+theme(axis.text.x=element_blank())+ylab("")
 
 svglite::svglite(paste0("gonad_Dmrt1_expression_",ts,".svg"),width=5,height=3)
-gg_sox_fpkm("Dmrt1",d=dds_gonad_subset)+theme(axis.text.x=element_blank())+ylab("")
+gg_sox_fpkm("Dmrt1",d=dds_gonad_subset,bar=T)+theme(axis.text.x=element_blank())+ylab("")
 dev.off()
 
 nrow(temp<-f_gonad_mean[rownames(dds_gonad_subset),])
@@ -180,8 +209,8 @@ grid.arrange(g1r,g3r,g_legend(g4r),g2r, ncol=2,top="Gonad Data - Somatic Subset"
 ```
 
 
-# Figure 4C - Venn Diagram
-```{r}
+## Figure 4C - Venn Diagram
+```{r figure_4C_venn,eval=T}
 
 # Compare Sox89 wt vs null as a categorial variable and look for an interaction term
 colData(dds_ovary_cat<-dds_gonad[,colData(dds_gonad)$time=="ovary" & (colData(dds_gonad)$sox==0 | colData(dds_gonad)$sox==4)])
@@ -211,9 +240,9 @@ grid.newpage()
 vennplot <- draw.pairwise.venn(length(x1),length(y1),length(z1), c("Sox8/9 WT", "Sox8/9 Null"))
 ```
 
-# Figure 4D - Sex Determination Heatmap
-## Define list of sex determination genes based on embryonic microarray data and literature/ontology sources
-```{r}
+## Figure 4D - Sex Determination Heatmap
+### Define list of sex determination genes based on embryonic microarray data and literature/ontology sources
+```{r figure4D_sexdetermination_genes,eval=T}
 length(embryonic_network_full <- tT[tT$adj.P.Val < 0.05 & tT$chr %in% 1:19,"ensembl"])
 
 length(en_list<-symbols[symbols$gene_name %in% read_table("../granulosa_culture/network.txt",col_names = F)$X1,"gene_id"])
@@ -230,7 +259,7 @@ length(sex_det_list<-unique(c(embryonic_network_full,en_list,go_list,vb_list)))
 ```
 
 
-## Figure 1D - Heatmap of genes that are Sox8/9 dependent that are implicated in sex determination
+## Figure 4D - Heatmap of genes that are Sox8/9 dependent that are implicated in sex determination
 ```{r heatmap_embryonic_genes,eval=T}
 length(x1<-rownames(subset(res_dds_ovary_wt, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
 length(y1<-rownames(subset(res_dds_ovary_null, abs(log2FoldChange) > 1 & padj< 0.05 & baseMean > 50)))
@@ -280,9 +309,9 @@ dev.off()
 ```
 
 
-# Figure 4E - In Vivo ATAC/ChIP/Motifs
-## ChIP peaklist
-```{r}
+## Figure 4E - In Vivo ATAC/ChIP/Motifs
+### ChIP peaklist
+```{r Figure_4E_invivo_motifs,eval=T}
 
 length(ovary8w_ctvdmrt1_dmrt1)
 
@@ -300,8 +329,8 @@ length(ovary_ctvdmrt1_sox9_top<-ovary_ctvdmrt1_sox9[ovary_ctvdmrt1_sox9$score > 
 
 
 
-length(temp_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1_top[!ovary8w_ctvdmrt1_dmrt1_top %over% bl_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
-length(temp_sox9<-keepSeqlevels(ovary_ctvdmrt1_sox9_top[!ovary_ctvdmrt1_sox9_top %over% bl_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
+length(temp_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1_top[!ovary8w_ctvdmrt1_dmrt1_top %over% el_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
+length(temp_sox9<-keepSeqlevels(ovary_ctvdmrt1_sox9_top[!ovary_ctvdmrt1_sox9_top %over% el_mm10],value=c(1:19,"X"),pruning.mode = "coarse"))
 
 
 
@@ -468,7 +497,7 @@ save(group_a_sites,group_b_sites,group_c_sites,file="group_abc_sites.rdata")
 ```
 
 ## Heatmap
-```{r}
+```{r figure_4_heatmap,eval=T}
 #load("group_abc_sites.rdata")
 #g_p1<-rtracklayer::import("../data/dmrt1_chip_from_dmrt1_expressing_ovary_idx4_Project033_041317.fastq.dedup.unique.ucsc.bigWig",
 #                       selection=temp+2000)
@@ -539,7 +568,8 @@ col_fun_atac_sertoli= colorRamp2(quantile(mat_atac_sertoli, c(0, 0.99)), c("whit
 
 #col=c("red","green","blue","white")
 col=cbPalette[c(6,7,4,1)]
-svglite::svglite(paste0("Figure4E_invivo_chip_heatmap_",ts,".svg"),width=8,height=7.5)
+#svglite::svglite(paste0("Figure4E_invivo_chip_heatmap_",ts,".svg"),width=8,height=7.5)
+pdf(paste0("Figure4E_invivo_chip_heatmap_",ts,".pdf"),width=8,height=7.5)
 EnrichedHeatmap(mat_atac_granulosa, col = col_fun_atac_granulosa, name = "atac granulosa",column_title = "atac granulsa",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,
                 top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,1.2),yaxis = F)) ,use_raster=TRUE) +
 EnrichedHeatmap(mat_atac_sertoli, col = col_fun_atac_sertoli, name = "Atac sertoli",column_title = "atac sertoli",column_title_rot=90, axis_name_rot = 90,split=temp$level,pos_line=F,show_heatmap_legend = FALSE,

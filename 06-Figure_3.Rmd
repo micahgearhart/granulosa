@@ -124,7 +124,7 @@ col_fun_df=colorRamp2(c(min(c(df$gran,df$sert)),2.5,max(c(df$gran,df$sert))),c("
 
 #col=c("red","green","blue")
 #col=cbPalette[c(3,5,7,4,6,8)]
-col=cbPalette[c(6,7,4,1)]
+col=cbPalette[c(1,4,7,6)]
   dmrt1_order<-row_order(  EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "dmrt1",column_title = "Dmrt1 (Sertoli)",axis_name_rot = 90,pos_line=F,split=temp_1$class,column_title_rot=90,show_heatmap_legend = FALSE,
                   top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,18),yaxis = F)) ))
     
@@ -170,5 +170,78 @@ dev.off()
 #  EnrichedHeatmap(mat_dmrt1, col = c("white", "black"),pos_line=F, name = "dmrt1_sites", axis_name_rot = 90,column_title = "dmrt1_sites",split=mysplit,column_title_rot=90,show_heatmap_legend = FALSE) +
 #  EnrichedHeatmap(mat_sox9, col = c("white", "black"),pos_line=F, name = "sox9_sites", axis_name_rot = 90,column_title = "sox9_sites",split=mysplit,column_title_rot=90,show_heatmap_legend = FALSE)
   
+```
+
+## Granulosa DARs heatmap
+```{r granulosa_dars,eval=F}
+length(temp_3<-t_regions)
+length(temp_3<-temp_3[temp_3$class=="Granulosa"] )  
+temp_3$class<-paste0(temp_3$class,":",temp_3$deg) %>% gsub("oli","",.) %>% gsub("deg_","",.) %>% gsub("Constitutive","Con",.) %>% gsub("ulosa","", .)
+table(temp_3$class)
+temp_4<-peak_center(temp_3) 
+
+df<-data.frame(gran=temp_3$gran_fpkm,sert=temp_3$sert_fpkm,stat=temp_3$stat)
+
+g_atac_dmrt1<-rtracklayer::import("../data/fresh_sertoli_noMT_dedup_unique_merge.bigWig",selection=temp_4+2000) #sertoli
+g_atac_control<-rtracklayer::import("../data/fresh_gran_noMT_dedup_unique_merge.bigWig",selection=temp_4+2000) #granulosa
+g_p1<-rtracklayer::import("../data/ESR22_GCCAAT_Fri_Feb_21_2020_1104.bigWig",selection=temp_4+2000)
+g_p2<-rtracklayer::import("../data/ovaryav574_CAGATC_Fri_Feb_21_2020_1104.bigWig",selection=temp_4+2000)
+
+g_p4<-rtracklayer::import("../data/k27ac_noCre.dedup.unique.bigWig",selection=temp_4+2000)
+g_p5<-rtracklayer::import("../data/k27ac_dhhCre.dedup.unique.bigWig",selection=temp_4+2000)
+
+seqlevelsStyle(g_atac_dmrt1)<-"UCSC"
+seqlevelsStyle(g_atac_control)<-"UCSC"
+seqlevelsStyle(g_p1)<-"UCSC"
+seqlevelsStyle(g_p2)<-"UCSC"
+seqlevelsStyle(g_p4)<-"UCSC"
+seqlevelsStyle(g_p5)<-"UCSC"
+
+
+mat_ad = normalizeToMatrix(g_atac_dmrt1, temp_4, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_ac = normalizeToMatrix(g_atac_control, temp_4, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p1 = normalizeToMatrix(g_p1, temp_4, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p2 = normalizeToMatrix(g_p2, temp_4, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p4 = normalizeToMatrix(g_p4, temp_4, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+mat_p5 = normalizeToMatrix(g_p5, temp_4, value_column = "score",  extend = 2000, mean_mode = "w0", w = 50)
+
+
+mat_dmrt1=normalizeToMatrix(sertoli_dmrt1.sites, temp_2, value_column = "score", mean_mode = "absolute",
+   extend = 2000, w = 50, smooth = FALSE)
+#mat_dmrt1_open=normalizeToMatrix(group_a_sites, temp_2, value_column = "score", mean_mode = "absolute",
+#   extend = 2000, w = 50, smooth = FALSE)
+mat_sox9=normalizeToMatrix(testis_sox9.sites, temp_2, value_column = "score", mean_mode = "absolute",
+   extend = 2000, w = 50, smooth = FALSE)
+#mat_sox9_open=normalizeToMatrix(group_c_sites, temp_2, value_column = "score", mean_mode = "absolute",
+#   extend = 2000, w = 50, smooth = FALSE)
+mat_tea=normalizeToMatrix(sertoli_dar_wo_DS.sites, temp_2, value_column = "score", mean_mode = "absolute",
+   extend = 2000, w = 50, smooth = FALSE)
+#mat_foxl2=normalizeToMatrix(foxl2_pwm, temp_2, value_column = "score", mean_mode = "absolute",
+#   extend = 2000, w = 50, smooth = FALSE)
+
+
+seqlevelsStyle(temp_4)<-"UCSC"
+col_fun_p1= colorRamp2(quantile(mat_p1, c(0, 0.99)), c("white", "darkblue"))
+col_fun_p2= colorRamp2(quantile(mat_p2, c(0, 0.99)), c("white", "green"))
+col_fun_p4= colorRamp2(quantile(mat_p4, c(0, 0.99)), c("white", "black"))
+col_fun_p5= colorRamp2(quantile(mat_p5, c(0, 0.99)), c("white", "black"))
+col_fun_ac= colorRamp2(quantile(mat_ac, c(0, 0.99)), c("white", "red"))
+col_fun_ad= colorRamp2(quantile(mat_ad, c(0, 0.99)), c("white", "blue"))
+col_fun_df=colorRamp2(c(min(c(df$gran,df$sert)),2.5,max(c(df$gran,df$sert))),c("#008837","#f7f7f7","#7b3294"))
+
+
+EnrichedHeatmap(mat_ac, col = col_fun_ac, name = "atac_control",column_title = "Granulosa",axis_name_rot = 90,split=temp_3$class,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+              top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,13),yaxis = F)),use_raster=TRUE, raster_device="png",raster_quality=10) +
+EnrichedHeatmap(mat_ad, col = col_fun_ad, name = "atac_dmrt1",column_title = "Sertoli",axis_name_rot = 90,split=temp_3$class,pos_line=F,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,25),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10) +
+EnrichedHeatmap(mat_p1, col = col_fun_p1, name = "esr2",column_title = "ESR2 Ovary",axis_name_rot = 90,pos_line=F,split=temp_3$class,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,9),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
+EnrichedHeatmap(mat_p2, col = col_fun_p2, name = "Foxl2",column_title = "Foxl2 Ovary",axis_name_rot = 90,pos_line=F,split=temp_3$class,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0.02,0.055),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
+EnrichedHeatmap(mat_p4, col = col_fun_p4, name = "k27nc",column_title = "k27 noCRE",axis_name_rot = 90,pos_line=F,split=temp_3$class,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,10),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 ) +
+EnrichedHeatmap(mat_p5, col = col_fun_p5, name = "k27dhh",column_title = "k27 dHHCRE",axis_name_rot = 90,pos_line=F,split=temp_3$class,column_title_rot=90,show_heatmap_legend = FALSE,
+                top_annotation = HeatmapAnnotation(lines = anno_enriched(gp = gpar(col = col),ylim=c(0,8),yaxis = F)),use_raster=TRUE, raster_device="png", raster_quality=10 )
+
 ```
 

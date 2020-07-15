@@ -5,41 +5,48 @@ editor_options:
   chunk_output_type: console
 creative_commons: CC BY
 ---
+# Identify Motifs under ChIP-seq and ATAC-seq In Vivo Peaks
 
-## Use meme to identify motifs under Dmrt1, Foxl2 and Sox9 ChIP peaks   
+## Export DNA sequences under ChIP Peaks for MEME   
 ```{r export_sequences_for_meme,eval=F}
+nseq<-553 #Meme can process more than this but but changes its output format so that it won't be processed by parseMEMEOutput412
+
 length(ovary_foxl2)
 length(testis_sox9)
 length(ovary_esr2)
 length(sertoli_dmrt1)
+
 length(ovary_esr2_top<-topify(ovary_esr2))
 length(sertoli_dmrt1_top<-topify(sertoli_dmrt1))
 
 ovary_foxl2.center<-GRanges(seqnames=seqnames(ovary_foxl2),IRanges(start=start(ovary_foxl2)+ovary_foxl2$summit,width=1),strand="*")+75
-ovary_foxl2.dna<-getSeq(mm10,sample(ovary_foxl2.center,length(testis_sox9)))
+ovary_foxl2.dna<-getSeq(mm10,sample(ovary_foxl2.center,nseq))
 names(ovary_foxl2.dna)<-paste0("ovary_foxl2_",1:length(ovary_foxl2.dna))
 export(ovary_foxl2.dna,"ovary_foxl2_sampled_151bp.fasta")
+length(readDNAStringSet("ovary_foxl2_sampled_151bp.fasta"))
 
 ovary_esr2_top.center<-GRanges(seqnames=seqnames(ovary_esr2_top),IRanges(start=start(ovary_esr2_top)+ovary_esr2_top$summit,width=1),strand="*")+75
-ovary_esr2_top.dna<-getSeq(mm10,sample(ovary_esr2_top.center,length(testis_sox9)))
+ovary_esr2_top.dna<-getSeq(mm10,sample(ovary_esr2_top.center,nseq))
 names(ovary_esr2_top.dna)<-paste0("ovary_esr2_top_",1:length(ovary_esr2_top.dna))
 export(ovary_esr2_top.dna,"ovary_esr2_top_sampled_151bp.fasta")
+length(readDNAStringSet("ovary_esr2_top_sampled_151bp.fasta"))
 
 testis_sox9.center<-GRanges(seqnames=seqnames(testis_sox9),IRanges(start=start(testis_sox9)+testis_sox9$summit,width=1),strand="*")+75
-testis_sox9.dna<-getSeq(mm10,testis_sox9.center)
+testis_sox9.dna<-getSeq(mm10,sample(testis_sox9.center,nseq))
 names(testis_sox9.dna)<-paste0("testis_sox9_",1:length(testis_sox9.dna))
 export(testis_sox9.dna,"testis_sox9_151bp.fasta")
+length(readDNAStringSet("testis_sox9_151bp.fasta"))
 
 sertoli_dmrt1_top.center<-GRanges(seqnames=seqnames(sertoli_dmrt1_top),IRanges(start=start(sertoli_dmrt1_top)+sertoli_dmrt1_top$summit,width=1),strand="*")+75
-sertoli_dmrt1_top.dna<-getSeq(mm10,sample(sertoli_dmrt1_top.center,length(testis_sox9)))
+sertoli_dmrt1_top.dna<-getSeq(mm10,sample(sertoli_dmrt1_top.center,nseq))
 names(sertoli_dmrt1_top.dna)<-paste0("sertoli_dmrt1_top_",1:length(sertoli_dmrt1_top.dna))
 export(sertoli_dmrt1_top.dna,"sertoli_dmrt1_top_sampled_151bp.fasta")
+length(readDNAStringSet("sertoli_dmrt1_top_sampled_151bp.fasta"))
 
 ```
 
-#Import Meme on ChIPs  
+## Import MEME analysis for ChIP Peaks
 ```{r import_meme,eval=T}
-
 
 
 #foxl2
@@ -52,6 +59,19 @@ names(ovary_foxl2.meme_dna)<-paste0("Motif ",1:length(ovary_foxl2.meme$motifList
 ovary_foxl2.pfm<-consensusMatrix(reverseComplement(ovary_foxl2.meme_dna[[1]]))
 ovary_foxl2.motif<-new("pfm",mat=t(t(ovary_foxl2.pfm[1:4,])*1/colSums(ovary_foxl2.pfm[1:4,])), name="Ovary FOXL2 Motif")
 plotMotifLogoStack(DNAmotifAlignment(list(foxl2_jaspar_motif,ovary_foxl2.motif),revcomp=c(F,F)))
+
+
+#esr2
+ovary_esr2.meme<-TFBSTools:::parseMEMEOutput412("ovary_esr2_top_sampled_151bp.txt")
+x<-lengths(ovary_esr2.meme_dna<-relist(getSeq(readDNAStringSet("ovary_esr2_top_sampled_151bp.fasta"),unlist(ovary_esr2.meme$motifList)),ovary_esr2.meme$motifList))
+names(ovary_esr2.meme_dna)<-paste0("Motif ",1:length(ovary_esr2.meme$motifList),", p-value: ",ovary_esr2.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(ovary_esr2.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("esr2 ChIP Peaks")
+
+ovary_esr2.pfm<-consensusMatrix(reverseComplement(ovary_esr2.meme_dna[[1]]))
+ovary_esr2.motif<-new("pfm",mat=t(t(ovary_esr2.pfm[1:4,])*1/colSums(ovary_esr2.pfm[1:4,])), name="Ovary esr2 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(esr2_jaspar_motif,ovary_esr2.motif),revcomp=c(T,T)))
+
 
 #dmrt1
 sertoli_dmrt1.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dmrt1_top_sampled_151bp.txt")
@@ -82,9 +102,7 @@ plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif,dm
 ```
 
 
-
-
-## Use meme to identify motifs under Sertoli-Specific DARs   
+## Export DNA sequences under ATAC Peaks for MEME  
 ```{r export_DAR_sequences_for_meme,eval=F}
 
 # Dmrt
@@ -135,6 +153,7 @@ export(sertoli_dar_wo_DS.dna,"sertoli_dar_wo_DS_201bp.fasta")
 
 ```
 
+## Import MEME analysis for ATAC Peaks
 ```{r load_DAR_motif,eval=T}
 sertoli_dar_Dmrt1.meme<-TFBSTools:::parseMEMEOutput412("sertoli_dar_Dmrt1_201bp.txt")
 x<-lengths(sertoli_dar_Dmrt1.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_dar_Dmrt1_201bp.fasta"),unlist(sertoli_dar_Dmrt1.meme$motifList)),sertoli_dar_Dmrt1.meme$motifList))
@@ -174,7 +193,7 @@ sapply(testis_sox9.sites,length)
 testis_sox9.sites<-sort(unlist(GRangesList(testis_sox9.sites)))
 
 #Scan for TEA motif
-system.time(sertoli_dar_wo_DS.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dar_wo_DS.pfm[1:4,],score="90%")))
+system.time(sertoli_dar_wo_DS.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dar_wo_DS.pfm[1:4,],score="85%")))
 sapply(sertoli_dar_wo_DS.sites,length)
 sertoli_dar_wo_DS.sites<-sort(unlist(GRangesList(sertoli_dar_wo_DS.sites)))
 

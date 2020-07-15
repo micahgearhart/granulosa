@@ -42,6 +42,8 @@ dim(unstranded_coldata)
 coldata<-rbind(coldata,unstranded_coldata)
 counts<-cbind(rev_stranded_counts$counts,unstranded_counts$counts)
 
+
+
 coldata$filename<-rownames(coldata) %>% 
 gsub("Project_035\\.GRCm38\\.","",.) %>% 
 gsub("Project_037\\.GRCm38\\.","",.) %>% 
@@ -109,6 +111,31 @@ colData(dds)$batch<-sample_table[rownames(colData(dds)),"project"]
 dds<-estimateSizeFactors(dds)
 plotPCA(normTransform(dds),intgroup=c("time")) + theme_bw() + ggtitle("PCA on All RNA-Seq Samples")
 
+
+#Write Supplemental Raw Count Table
+temp<-counts(dds[,colData(dds)$batch!="P006"]) %>% as.data.frame() %>%
+  dplyr::rename("S8--_S9cf+_CTV_Sf1Cre_6257_Index14_S14" = "S8.._S9cf._CTV_Sf1Cre_6257_Index14_S14",
+"S8--_S9gfcf_CTV_Sf1Cre_4520_Index6_S6" = "S8.._S9gfcf_CTV_Sf1Cre_4520_Index6_S6",
+"S8--_S9gfcf_CTV_Sf1Cre_4669_Index9_S9" = "S8.._S9gfcf_CTV_Sf1Cre_4669_Index9_S9",
+"S8--_S9gfcf_CTV_Sf1Cre_4675_Index16_S16" = "S8.._S9gfcf_CTV_Sf1Cre_4675_Index16_S16",
+"S8+-_S9gfcf_CTV_Sf1Cre_6921_Index15_S15" = "S8.._S9gfcf_CTV_Sf1Cre_6921_Index15_S15",
+"S8++_S9gfcf_CTV_Sf1Cre_6922_Index3_S3" = "S8.._S9gfcf_CTV_Sf1Cre_6922_Index3_S3",
+"S8--_S9gfcf_noCTV_Sf1Cre_4525_Index7_S7" = "S8.._S9gfcf_noCTV_Sf1Cre_4525_Index7_S7",
+"S8--_S9gf+_CTV_Sf1Cre_5463_Index2_S2" = "S8.._S9gf._CTV_Sf1Cre_5463_Index2_S2",
+"S8+-_S9gf+_CTV_Sf1Cre_5617_Index11_S11" = "S8.._S9gf._CTV_Sf1Cre_5617_Index11_S11",
+"S8--_S9gf+_CTV_Sf1Cre_5620_Index12_S12" = "S8.._S9gf._CTV_Sf1Cre_5620_Index12_S12",
+"S8+-_S9gf+_CTV_Sf1Cre_6170_Index13_S13" = "S8.._S9gf._CTV_Sf1Cre_6170_Index13_S13",
+"S8+-_S9gfgf_CTV_Sf1Cre_4519_Index5_S5"= "S8.._S9gfgf_CTV_Sf1Cre_4519_Index5_S5",
+"S8--_S9gfgf_CTV_Sf1Cre_4668_Index8_S8" = "S8.._S9gfgf_CTV_Sf1Cre_4668_Index8_S8",
+"S8--_S9gfgf_CTV_Sf1Cre_4684_Index10_S10"= "S8.._S9gfgf_CTV_Sf1Cre_4684_Index10_S10",
+"S8--_S9gfgf_CTV_Sf1Cre_6927_Index4_S4" = "S8.._S9gfgf_CTV_Sf1Cre_6927_Index4_S4",
+"S8--_S9gfgf_noCTV_Sf1Cre_4523_Index1_S1" = "S8.._S9gfgf_noCTV_Sf1Cre_4523_Index1_S1")
+dim(temp)
+as.data.frame(colnames(temp))
+
+write.csv(tibble::rownames_to_column(temp,var="Ensembl GeneID"),"Lindeman_et_al_RNAseq_counts.csv",quote=F,row.names=F)
+getwd()
+
 ```
 
 
@@ -153,6 +180,13 @@ rownames(tead2_pfm)<-c("A","C","G","T")
 colnames(tead2_pfm)<-NULL
 tead2_jaspar_motif<-new("pfm",mat=t(t(tead2_pfm[1:4,])*1/colSums(tead2_pfm[1:4,])), name="Tead2 MA1121.1")
 
+#download.file("http://jaspar.genereg.net/api/v1/matrix/MA0258.2.pfm",destfile = "MA0258.2.pfm")
+esr2_pfm<-as.matrix(read.table("MA0258.2.pfm",skip=1))
+esr2_pfm <- apply (esr2_pfm, c (1, 2), function (x) {(as.integer(x))})
+rownames(esr2_pfm)<-c("A","C","G","T")
+colnames(esr2_pfm)<-NULL
+esr2_jaspar_motif<-new("pfm",mat=t(t(esr2_pfm[1:4,])*1/colSums(esr2_pfm[1:4,])), name="ESR2 MA0258.2")
+
 
 ```
 
@@ -180,22 +214,22 @@ length(peak_e135_atac_XY_dm16 <- broadPeakToGRanges("../data/futtner_ATAC_Sertol
 length(peak_e105_atac_XX <- reduce(c(peak_e105_atac_XX_dm19,peak_e105_atac_XX_dm24)))
 length(peak_e105_atac_XX<-peak_e105_atac_XX[peak_e105_atac_XX %over% peak_e105_atac_XX_dm19 & 
                                                peak_e105_atac_XX %over% peak_e105_atac_XX_dm24 &
-                                               !peak_e105_atac_XX %over% bl_mm10])
+                                               !peak_e105_atac_XX %over% el_mm10])
 
 length(peak_e105_atac_XY <- reduce(c(peak_e105_atac_XY_dm21,peak_e105_atac_XY_dm22)))
 length(peak_e105_atac_XY <-peak_e105_atac_XY[peak_e105_atac_XY %over% peak_e105_atac_XY_dm21 & 
                                              peak_e105_atac_XY %over% peak_e105_atac_XY_dm22 &
-                                             !peak_e105_atac_XY %over% bl_mm10])
+                                             !peak_e105_atac_XY %over% el_mm10])
 
 length(peak_e135_atac_XX <- reduce(c(peak_e135_atac_XX_dm12,peak_e135_atac_XX_dm13)))
 length(peak_e135_atac_XX<-peak_e135_atac_XX[peak_e135_atac_XX %over% peak_e135_atac_XX_dm12 & 
                                                peak_e135_atac_XX %over% peak_e135_atac_XX_dm13 &
-                                               !peak_e135_atac_XX %over% bl_mm10])
+                                               !peak_e135_atac_XX %over% el_mm10])
 
 length(peak_e135_atac_XY <- reduce(c(peak_e135_atac_XY_dm15,peak_e135_atac_XY_dm16)))
 length(peak_e135_atac_XY<-peak_e135_atac_XY[peak_e135_atac_XY %over% peak_e135_atac_XY_dm15 & 
                                                peak_e135_atac_XY %over% peak_e135_atac_XY_dm16 &
-                                               !peak_e135_atac_XY %over% bl_mm10])
+                                               !peak_e135_atac_XY %over% el_mm10])
 
 #Open regions in Granulosa Cells
 length(peak_p23_atac_XX_rep1<-broadPeakToGRanges("../data/fresh_gran_ATAC_rep1_N701_GW052319.dedup.unique.macs_peaks.broadPeak"))
@@ -205,7 +239,8 @@ length(peak_p23_atac_XX <- reduce(c(peak_p23_atac_XX_rep1,peak_p23_atac_XX_rep2,
 length(peak_p23_atac_XX<-peak_p23_atac_XX[peak_p23_atac_XX %over% peak_p23_atac_XX_rep1& 
                                                peak_p23_atac_XX %over% peak_p23_atac_XX_rep2 &
                                                peak_p23_atac_XX %over% peak_p23_atac_XX_rep3 &
-                                               !peak_p23_atac_XX %over% bl_mm10])
+                                               !peak_p23_atac_XX %over% el_mm10])
+rtracklayer::export(peak_p23_atac_XX,"peak_p23_atac_XX.bed")
 
 #Open regions in Sertoli Cells
 length(peak_p7_atac_XY_rep1<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep1_N704_GW052319.dedup.unique.macs_peaks.broadPeak"))
@@ -215,7 +250,8 @@ length(peak_p7_atac_XY <- reduce(c(peak_p7_atac_XY_rep1,peak_p7_atac_XY_rep2,pea
 length(peak_p7_atac_XY<-peak_p7_atac_XY[peak_p7_atac_XY %over% peak_p7_atac_XY_rep1& 
                                                peak_p7_atac_XY %over% peak_p7_atac_XY_rep2 &
                                                peak_p7_atac_XY %over% peak_p7_atac_XY_rep3 &
-                                               !peak_p7_atac_XY %over% bl_mm10])
+                                               !peak_p7_atac_XY %over% el_mm10])
+rtracklayer::export(peak_p7_atac_XY,"peak_p7_atac_XY.bed")
 
 
 #length(peak_p23_atac_XX<-broadPeakToGRanges("../data/p23_granulosa_ATAC_P028_N704_042119_peaks.broadPeak"))
@@ -228,14 +264,11 @@ mito_homologs<-narrowPeakToGRanges("../data/mitochondrial_homologs_peaks.narrowP
 length(sertoli_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.dedup.unique.macs_peaks.narrowPeak")))
 #length(ovary_foxl2<-narrowPeakToGRanges("../data/ovaryav574_CAGATC_042219_peaks.narrowPeak"))
 length(ovary_foxl2<-narrowPeakToGRanges("../data/foxl2ChIP_wt_ovary_070519g_peaks.narrowPeak")) 
-length(ovary_foxl2<-ovary_foxl2[!ovary_foxl2 %over% bl_mm10])
+length(ovary_foxl2<-ovary_foxl2[!ovary_foxl2 %over% el_mm10])
 length(ovary_esr2<-narrowPeakToGRanges("../data/ESR22_GCCAAT_042319_peaks.narrowPeak"))
-length(ovary_esr2<-ovary_esr2[!ovary_esr2 %over% bl_mm10])
+length(ovary_esr2<-ovary_esr2[!ovary_esr2 %over% el_mm10])
 #length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.macs_peaks.narrowPeak")))
 length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_testis_idx512.dedup.unique.noMT.macs_peaks.narrowPeak")))
-
-## ADD ESR2!
-
 
 # In Vitro ATAC-Seq (Figure 5D)
 #length(vitro_atac_control2<-broadPeakToGRanges("../data/control2.macs_peaks.broadPeak"))
@@ -254,7 +287,8 @@ length(peak_vitro_atac_cagSox9control <- reduce(c(peak_vitro_atac_cagSox9control
 length(peak_vitro_atac_cagSox9control<-peak_vitro_atac_cagSox9control[peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep1 & 
                                                peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep2 &
                                                peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep3 &
-                                               !peak_vitro_atac_cagSox9control %over% bl_mm10])
+                                               !peak_vitro_atac_cagSox9control %over% el_mm10])
+rtracklayer::export(peak_vitro_atac_cagSox9control,"peak_vitro_atac_cagSox9control.bed")
 
 length(peak_vitro_atac_cagSox9_rep1<-broadPeakToGRanges("../data/gran_7d_cagSox9_CRE_ATAC_rep1_N710_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
 length(peak_vitro_atac_cagSox9_rep2<-broadPeakToGRanges("../data/gran_7d_cagSox9_CRE_ATAC_rep2_N711_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))
@@ -263,7 +297,8 @@ length(peak_vitro_atac_cagSox9 <- reduce(c(peak_vitro_atac_cagSox9_rep1,peak_vit
 length(peak_vitro_atac_cagSox9<-peak_vitro_atac_cagSox9[peak_vitro_atac_cagSox9 %over% peak_vitro_atac_cagSox9_rep1 & 
                                                peak_vitro_atac_cagSox9 %over% peak_vitro_atac_cagSox9_rep2 &
                                                peak_vitro_atac_cagSox9 %over% peak_vitro_atac_cagSox9_rep3 &
-                                               !peak_vitro_atac_cagSox9 %over% bl_mm10])
+                                               !peak_vitro_atac_cagSox9 %over% el_mm10])
+rtracklayer::export(peak_vitro_atac_cagSox9,"peak_vitro_atac_cagSox9.bed")
 
 #length(peak_vitro_atac_cagDmrt1control <-broadPeakToGRanges("../data/control_P037_ATACseq.macs_peaks.broadPeak"))
 length(peak_vitro_atac_cagDmrt1control_rep1<-broadPeakToGRanges("../data/gran_p7control_n1_P037_ATACseq_N703_galore.dedup.unique.macs_peaks.broadPeak"))
@@ -273,8 +308,8 @@ length(peak_vitro_atac_cagDmrt1control <- reduce(c(peak_vitro_atac_cagDmrt1contr
 length(peak_vitro_atac_cagDmrt1control<-peak_vitro_atac_cagDmrt1control[peak_vitro_atac_cagDmrt1control %over% peak_vitro_atac_cagDmrt1control_rep1 & 
                                                peak_vitro_atac_cagDmrt1control %over% peak_vitro_atac_cagDmrt1control_rep2 &
                                                peak_vitro_atac_cagDmrt1control %over% peak_vitro_atac_cagDmrt1control_rep3 &
-                                               !peak_vitro_atac_cagDmrt1control %over% bl_mm10])
-
+                                               !peak_vitro_atac_cagDmrt1control %over% el_mm10])
+rtracklayer::export(peak_vitro_atac_cagDmrt1control,"peak_vitro_atac_cagDmrt1control.bed")
 
 #length(peak_vitro_atac_cagDmrt1<-broadPeakToGRanges("../data/cagDmrt1_P037_ATACseq.macs_peaks.broadPeak"))
 #Use intersection of all three triplicates
@@ -285,7 +320,8 @@ length(peak_vitro_atac_cagDmrt1 <- reduce(c(peak_vitro_atac_cagDmrt1_rep1,peak_v
 length(peak_vitro_atac_cagDmrt1<-peak_vitro_atac_cagDmrt1[peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep1 & 
                                                peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep2 &
                                                peak_vitro_atac_cagDmrt1 %over% peak_vitro_atac_cagDmrt1_rep3 &
-                                               !peak_vitro_atac_cagDmrt1 %over% bl_mm10])
+                                               !peak_vitro_atac_cagDmrt1 %over% el_mm10])
+rtracklayer::export(peak_vitro_atac_cagDmrt1,"peak_vitro_atac_cagDmrt1.bed")
 
 #In vitro ChIP
  length(gran_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/granulosa_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))

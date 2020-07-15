@@ -5,7 +5,7 @@ editor_options:
   chunk_output_type: console
 creative_commons: CC BY
 ---
-# Figure 1
+# Figure 1 - Granulosa vs Sertolii
 
 ## Use Fresh Sertoli / granulosa data to define somatic genes that are differentially expressed
 
@@ -21,23 +21,24 @@ dds_soma<-DESeq(dds_soma)
 #get fpkm
 dim(f_soma<-as.data.frame(log2(fpkm(dds_soma)+0.1)))
 
+
 #colnames(f_gonad)<-paste(colData(dds_gonad)$time,colData(dds_gonad)$gene,colData(dds_gonad)$sox,1:nrow(colData(dds_gonad)),sep="_")
 #f_gonad$mgi_symbol<-mcols(dds_gonad)$mgi_symbol
 #View(f_gonad)
 
-  f_soma_mean <-f_soma %>% 
-    tibble::rownames_to_column(var="ensembl") %>%
-    tidyr::gather(sample,fpkm,-ensembl) %>% 
-    dplyr::mutate(sex=colData(dds_soma)[sample,]$gene) %>% 
-    dplyr::mutate(sex=gsub("control","granulosa",sex)) %>% 
-    dplyr::group_by(sex,ensembl) %>% 
-      dplyr::summarize(mean_fpkm=round(mean(fpkm),3)) %>% 
-      dplyr::select(sex,ensembl,mean_fpkm) %>% 
-      ungroup() %>%
-  tidyr::spread(sex,mean_fpkm) %>% as.data.frame()
-
-  rownames(f_soma_mean) <- f_soma_mean$ensembl
-  f_soma_mean<-f_soma_mean[,-1]
+    f_soma_mean <-f_soma %>% 
+      tibble::rownames_to_column(var="ensembl") %>%
+      tidyr::gather(sample,fpkm,-ensembl) %>% 
+      dplyr::mutate(sex=colData(dds_soma)[sample,]$gene) %>% 
+      dplyr::mutate(sex=gsub("control","granulosa",sex)) %>% 
+      dplyr::group_by(sex,ensembl) %>% 
+        dplyr::summarize(mean_fpkm=round(mean(fpkm),3)) %>% 
+        dplyr::select(sex,ensembl,mean_fpkm) %>% 
+        ungroup() %>%
+    tidyr::spread(sex,mean_fpkm) %>% as.data.frame()
+  
+    rownames(f_soma_mean) <- f_soma_mean$ensembl
+    f_soma_mean<-f_soma_mean[,-1]
   
 f_soma_mean$symbol<-mcols(dds_soma)[match(rownames(f_soma_mean),rownames(dds_soma)),]$symbol
 length(high_soma_fpkm<-rownames(f_soma_mean[apply(f_soma_mean,1,max) > log2(2.5),]))
@@ -57,7 +58,7 @@ results_soma$f_granulosa<-f_soma_mean[match(rownames(results_soma),rownames(f_so
 #View(as.data.frame(results_soma))
 
 
-write.csv(results_soma,file=paste0("granulosa_vs_Sertoli_comparison_",ts,".csv"),quote=F)
+#write.csv(results_soma,file=paste0("granulosa_vs_Sertoli_comparison_",ts,".csv"),quote=F)
 
 
 
@@ -76,30 +77,35 @@ granulosa_transcripts<-transcripts[transcripts$gene_id %in% granulosa_up]
 
 nrow(temp<-as.data.frame(results_soma))
 
-#subset to significant genes (###use fpkm cutoff instead of baseMean?)
+#subset to significant genes
 nrow(results_soma<-subset(results_soma,abs(log2FoldChange) > 2 & padj < 0.05 & (f_sertoli > 2.5 | f_granulosa > 2.5)))
 table(symbols[symbols$gene_id %in% rownames(results_soma),"chr"])
 
 table(temp$results_soma<- factor(case_when (
   temp$log2FoldChange > 2 & temp$padj < 0.05 & temp$f_sertoli > 2.5 ~ "Sertoli",
-  temp$log2FoldChange < -2 & temp$padj < 0.05 & temp$f_granulosa > 2.5 ~ "Granulosa",
+  temp$log2FoldChange < -2 & temp$padj < 0.05 & temp$f_granulosa > 2.5 ~ "granulosa",
   TRUE ~ "unchanged"
-  ),levels=c("Granulosa","unchanged","Sertoli")))
+  ),levels=c("granulosa","unchanged","Sertoli")))
   
 
-(df<-temp[temp$mgi_symbol %in% c("Dmrt1","Nr5a2","Esr2","Foxl2","Sox8","Sox9","Cyp19a1","Cytip","Hsd17b3","Wnt5b", "Sdc3", "Dhh", "Cst9", "Rspo2","Bmpr1b"),])
+(df<-temp[temp$mgi_symbol %in% c("Dmrt1","Nr5a2","Esr2","Foxl2","Sox8","Sox9","Cyp19a1","Cytip","Hsd17b3","Wnt5b", "Sdc3", "Dhh", "Cst9", "Rspo2","Bmpr1b","Ocln"),])
 
 svglite::svglite(paste0("somatic_volcano_",ts,".svg"),width=4,height=3)
 temp %>% 
   dplyr::filter(!is.na(log2FoldChange) & !is.na(padj)) %>% 
 ggplot(aes(x=log2FoldChange,y=(-1*log10(padj)),color=results_soma)) + geom_point(size=0.7) + theme_bw() + scale_color_manual(values=c("red","darkgray","blue")) +
   annotate("text",x=df$log2FoldChange,y=(-1*log10(df$padj)),label=df$mgi_symbol)
-dev.off()
+nodev.off()
 
+
+temp<-tibble::rownames_to_column(temp,var="Ensembl_GeneID")
+temp<-temp[,c("Ensembl_GeneID","mgi_symbol","baseMean","log2FoldChange","padj","f_sertoli","f_granulosa","results_soma")]
+colnames(temp)<-c("Ensembl_GeneID","Gene Symbol","Mean Counts","Log2FoldChange","BH Padj","FPKM Sertoli","FPKM Granulosa","Sex Bias")
+head(temp)
+
+write.csv(temp,"Lindeman_et_al_Sex_Biased_Somatic_Genes.csv",row.names=F,quote=F)
 ```
 
-
-# Figure 1B - In Vivo ATACseq
 
 ## UpsetR comparison of ATACseq Peaklist
 ```{r vivo_ATACseq_upsetR,eval=T}
@@ -158,7 +164,7 @@ upset(as.data.frame(mcols(vivo_atac)), nsets = 4, number.angles = 30, point.size
 
 
 
-## Figure 0b  - Combine Embryonic Data with WT vs Sertoli DARs
+## Combine Embryonic Data with WT vs Sertoli DARs
 ### Map Genes to DARs
 ### Define g_regions and s_regions for DARs close to granulosa expressed genes and Sertoli expressed genes
 
@@ -236,7 +242,7 @@ scale_color_manual(values = cbPalette[c(1:6)]) + geom_text(x=df$PC1,y=df$PC2,lab
 
 ```
 
-#Use contrast to find differentially atac-able regions between granulosa and Sertoli
+## Use contrast to find differentially atac-able regions between granulosa and Sertoli
 ```{r in_vivo_DARs_DESeq,eval=T}
 f_atac_vivo <- fpkm(vivo_dds,robust=TRUE)
 
@@ -380,13 +386,27 @@ table(vivo_atac_subset$peak<-case_when (
   TRUE ~ "unclassified"
 ))
 
+# Look at Ovary  peak lists
+table(vivo_atac_subset$ovary_dmrt1<-vivo_atac_subset %over% ovary8w_ctvdmrt1_dmrt1)
+table(vivo_atac_subset$ovary_sox9<-vivo_atac_subset %over% ovary_ctvdmrt1_sox9)
+
+vivo_atac_subset$ovary_peak<-case_when (
+  vivo_atac_subset$ovary_dmrt1 & vivo_atac_subset$ovary_sox9 ~ "DS",
+  vivo_atac_subset$ovary_dmrt1 & !vivo_atac_subset$ovary_sox9 ~ "D",
+  !vivo_atac_subset$ovary_dmrt1 & vivo_atac_subset$ovary_sox9  ~ "S",
+  !vivo_atac_subset$ovary_dmrt1 & !vivo_atac_subset$ovary_sox9 ~ "N",
+  TRUE ~ "unclassified"
+)
+table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$ovary_peak)
 
 
+# Regions of Interest
 roi<-swl(c("chr6:119,522,263-119,531,826", # Wnt5b
            "chr12:76,130,814-76,134,590", #Esr2
             "chr12:76,116,825-76,119,045", #Esr2_3p
           "chr1:136,912,616-136,917,861", #Nr5a2
               "chr4:130,800,511-130,803,585",#Sdc3
+          "chr13:100,481,504-100,625,768", #Ocln
           "chr15:98,890,811-98,899,565", #Dhh
           "chr2:148,832,886-148,834,489" #Cst9
       #    "chr13:64,063,297-64,065,858", #HSD17b3
@@ -529,15 +549,14 @@ mean(mcols(granulosa_DAR_density)$distance)
 sum(seqlengths(mm10))/length(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"])
 hist(mcols(granulosa_DAR_density)$distance,n=10000,xlim=c(0,100000))
 
-
 ```
 
 
 
-#If a DAR is within 1kp of a gene is it mostly likely to be a sex-specific gene?
+### If a DAR is within 1kp of a gene is it mostly likely to be a sex-specific gene?
 
 
-# invert thinking - find all atac peaks near differentially expressed genes
+### invert thinking - find all atac peaks near differentially expressed genes
 ```{r mean_distance,eval=F}
 
 cutoff<-list(c(0,1000),c(1000,10000),c(10000,100000))
@@ -590,7 +609,7 @@ ggdraw(plot_grid(plot_grid(g2 + theme(legend.position = "none"), g1 + theme(lege
 
 
 
-## Determine what fraction of peaks are clustered
+### Determine what fraction of peaks are clustered
 ```{r cluster_fraction,eval=F}
 length(temp_s<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli"])
 #length(gr_cst<-vivo_atac_subset[vivo_atac_subset %over% swl("chr2:148,651,621-148,909,512") & vivo_atac_subset$class!="Constitutive"])
@@ -605,7 +624,7 @@ as.data.frame(temp_s[temp_s$density > 8])
 
 
 
-## Heatmap for Chromatin Only
+### Heatmap for Chromatin Only
 ```{r chromatin_only_heatmap,eval=F}
 seqlevelsStyle(temp_2)<-"NCBI"
 g_p1<-rtracklayer::import("../data/input_noCre.dedup.unique.bigWig",selection=temp_2+2000)
@@ -671,7 +690,7 @@ EnrichedHeatmap(mat_p10, col = col_fun_p10, name = "k27me3_dhhCre",column_title 
 
 ```
 
-# Tn5 footprinting **** DELETE?
+### Tn5 footprinting **** DELETE?
 ```{r tn5_footprinting,eval=FALSE}
 bamfile<-"../data/sertoli_fresh_ATAC_rep1_N704_GW052319.dedup.unique.noMT.bam"
 bamfile.labels <- gsub(".bam", "", basename(bamfile))

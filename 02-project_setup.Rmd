@@ -389,11 +389,18 @@ broadPeakToGRanges<-function(file,name="peak", ...) {
   return(gr)
 }
 
+gappedPeakToGRanges<-function(file,name="peak", ...) {
+  x <- read.table(file,stringsAsFactors=F, ...)
+  gr <-GRanges(seqnames=x$V1, ranges = IRanges(start=x$V2, end=x$V3),
+               strand="*", score=x$V13)
+  names(gr)<-paste0(name,"_",formatC(1:length(gr),width=5,format="d",flag="0"))
+  return(gr)
+}
 
 narrowPeakToGRanges<-function(file,name="peak", ...) {
   x <- read.table(file,stringsAsFactors=F, ...) 
   gr <-GRanges(seqnames=x$V1, ranges = IRanges(start=x$V2, end=x$V3),
-               strand="*", score=x$V5, e=x$V7,summit=x$V10)
+               strand="*", score=x$V5, e=x$V7,summit=x$V2+x$V10)
   names(gr)<-paste0(name,"_",formatC(1:length(gr),width=5,format="d",flag="0"))
   return(gr)
 }
@@ -602,7 +609,7 @@ mcols(transcripts)<-data.frame(gene_id=transcripts$gene_id,stringsAsFactors = F)
 transcripts$symbol<-symbols$gene_name[match(transcripts$gene_id,symbols$gene_id)]
 transcripts$biotype<-symbols$gene_type[match(transcripts$gene_id,symbols$gene_id)]
 
-el_mm10<-import("../../R_RESOURCES/mm10_exclusionList.bed ")
+el_mm10<-import("../../R_RESOURCES/mm10_exclusionList.bed")
 seqlevelsStyle(el_mm10)<-"NCBI"
 
 save(symbols,transcripts,el_mm10,file="symbols_M23.rdata")

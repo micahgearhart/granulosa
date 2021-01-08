@@ -198,18 +198,140 @@ length(ovary_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zark
 rmsk<-rtracklayer::import("../../R_RESOURCES/mm10_rmsk_TE.gtf")
 seqlevelsStyle(rmsk)<-"NCBI"
 rmsk<-keepSeqlevels(rmsk,value=c(1:19,"X","Y"),pruning.mode = "coarse")
+#Exclude Mitochondrial-genome like regions
+mito_homologs<-narrowPeakToGRanges("../data/mitochondrial_homologs_peaks.narrowPeak")
+
+# This code doesn't find the intersection of replicates
+#(peak_p23_atac_XX_files <- list.files("../data","gappedPeak$",full.names=T) %>% str_subset("112315",negate=F) %>% str_subset("gran"))
+#lengths(peak_p23_atac_XX<-GRangesList(lapply(peak_p23_atac_XX_files,narrowPeakToGRanges)))
+#length(peak_p23_atac_XX<-reduce(unlist(peak_p23_atac_XX)))
+#length(peak_p23_atac_XX<-peak_p23_atac_XX[!peak_p23_atac_XX %over% el_mm10])
+
+
+#(peak_p7_atac_XY_files <- list.files("../data","gappedPeak$",full.names=T) %>% str_subset("gran",negate=T) %>% str_subset("GW052319",negate=T) )
+#lengths(peak_p7_atac_XY<-GRangesList(lapply(peak_p7_atac_XY_files,narrowPeakToGRanges)))
+#length(peak_p7_atac_XY<-reduce(unlist(peak_p7_atac_XY)))
+#length(peak_p7_atac_XY<-peak_p7_atac_XY[!peak_p7_atac_XY %over% el_mm10])
+
+
+
+#Open regions in Granulosa Cells
+#length(peak_p23_atac_XX_rep1<-gappedPeakToGRanges("../data/gran-1-112315_S1.hmmr_peaks.gappedPeak"))
+#length(peak_p23_atac_XX_rep2<-gappedPeakToGRanges("../data/gran-2-112315_S1.hmmr_peaks.gappedPeak"))
+#length(peak_p23_atac_XX_rep3<-gappedPeakToGRanges("../data/gran-1-102120_S1.hmmr_peaks.gappedPeak"))
+#length(peak_p23_atac_XX_rep4<-gappedPeakToGRanges("../data/gran-2-102120_S1.hmmr_peaks.gappedPeak"))
+#length(peak_p23_atac_XX_rep5<-gappedPeakToGRanges("../data/gran-3-102120_S1.hmmr_peaks.gappedPeak"))
+
+length(peak_p23_atac_XX_rep1<-broadPeakToGRanges("../data/gran-1-112315_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX_rep2<-broadPeakToGRanges("../data/gran-2-112315_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX_rep3<-broadPeakToGRanges("../data/gran-1-102120_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX_rep4<-broadPeakToGRanges("../data/gran-2-102120_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX_rep5<-broadPeakToGRanges("../data/gran-3-102120_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p23_atac_XX <- reduce(c(peak_p23_atac_XX_rep1,peak_p23_atac_XX_rep2,peak_p23_atac_XX_rep3,peak_p23_atac_XX_rep4,peak_p23_atac_XX_rep5)))
+length(peak_p23_atac_XX<-peak_p23_atac_XX[peak_p23_atac_XX %over% peak_p23_atac_XX_rep1 & 
+                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep2 &
+                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep3 &
+                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep4 &
+                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep5 &
+                                               !peak_p23_atac_XX %over% el_mm10])
+
+#Open regions in Sertoli Cells
+#length(peak_p7_atac_XY_rep1<-gappedPeakToGRanges("../data/sertoli-101415_S1.hmmr_peaks.gappedPeak"))
+#length(peak_p7_atac_XY_rep2<-gappedPeakToGRanges("../data/Serolti-112315_S1.hmmr_peaks.gappedPeak"))
+#length(peak_p7_atac_XY_rep3<-gappedPeakToGRanges("../data/sertoli_fresh_ATAC_rep1_N704_GW052319.hmmr_peaks.gappedPeak"))
+#length(peak_p7_atac_XY_rep4<-gappedPeakToGRanges("../data/sertoli_fresh_ATAC_rep2_N705_GW052319.hmmr_peaks.gappedPeak"))
+#length(peak_p7_atac_XY_rep5<-gappedPeakToGRanges("../data/sertoli_fresh_ATAC_rep3_N706_GW052319.hmmr_peaks.gappedPeak"))
+
+length(peak_p7_atac_XY_rep1<-broadPeakToGRanges("../data/sertoli-101415_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY_rep2<-broadPeakToGRanges("../data/Serolti-112315_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY_rep3<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep1_N704_GW052319.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY_rep4<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep2_N705_GW052319.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY_rep5<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep3_N706_GW052319.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_p7_atac_XY <- reduce(c(peak_p7_atac_XY_rep1,peak_p7_atac_XY_rep2,peak_p7_atac_XY_rep3,peak_p7_atac_XY_rep4,peak_p7_atac_XY_rep5)))
+length(peak_p7_atac_XY<-peak_p7_atac_XY[peak_p7_atac_XY %over% peak_p7_atac_XY_rep1 & 
+                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep2 &
+                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep3 &
+                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep4 &
+                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep5 &
+                                               !peak_p7_atac_XY %over% el_mm10])
+
+
+rtracklayer::export(peak_p23_atac_XX,paste0("peak_p23_atac_XX_",ts,".bed"))
+rtracklayer::export(peak_p23_atac_XX_rep1,paste0("peak_p23_atac_XX_rep1",ts,".bed"))
+rtracklayer::export(peak_p23_atac_XX_rep2,paste0("peak_p23_atac_XX_rep2",ts,".bed"))
+rtracklayer::export(peak_p23_atac_XX_rep3,paste0("peak_p23_atac_XX_rep3",ts,".bed"))
+rtracklayer::export(peak_p23_atac_XX_rep4,paste0("peak_p23_atac_XX_rep4",ts,".bed"))
+rtracklayer::export(peak_p23_atac_XX_rep5,paste0("peak_p23_atac_XX_rep5",ts,".bed"))
+rtracklayer::export(peak_p7_atac_XY,paste0("peak_p7_atac_XY_",ts,".bed"))
+rtracklayer::export(peak_p7_atac_XY_rep1,paste0("peak_p7_atac_XY_rep1",ts,".bed"))
+rtracklayer::export(peak_p7_atac_XY_rep2,paste0("peak_p7_atac_XY_rep2",ts,".bed"))
+rtracklayer::export(peak_p7_atac_XY_rep3,paste0("peak_p7_atac_XY_rep3",ts,".bed"))
+rtracklayer::export(peak_p7_atac_XY_rep4,paste0("peak_p7_atac_XY_rep4",ts,".bed"))
+rtracklayer::export(peak_p7_atac_XY_rep5,paste0("peak_p7_atac_XY_rep5",ts,".bed"))
+
+
+#length(peak_p23_atac_XX<-broadPeakToGRanges("../data/p23_granulosa_ATAC_P028_N704_042119_peaks.broadPeak"))
+#length(peak_p7_atac_XY<-broadPeakToGRanges("../data/p7_Sertoli_ATAC_P028_N702_042119_peaks.broadPeak"))
+
+
+```
+
+
+```{r load_ChIP_ATAC_peaklist,eval=T}
+# This code doesn't find the intersection of replicates
+#(peak_e105_atac_XX_files <- list.files("../data","broadPeak$",full.names=T) %>% 
+#    str_subset("futtner",negate=F) %>% 
+#    str_subset("BipotentialFemale",negate=F) )
+#lengths(peak_e105_atac_XX<-GRangesList(lapply(peak_e105_atac_XX_files,broadPeakToGRanges)))
+#length(peak_e105_atac_XX<-reduce(unlist(peak_e105_atac_XX)))
+#length(peak_e105_atac_XX<-peak_e105_atac_XX[!peak_e105_atac_XX %over% el_mm10])
+#
+#(peak_e105_atac_XY_files <- list.files("../data","broadPeak$",full.names=T) %>% 
+#    str_subset("futtner",negate=F) %>% 
+#    str_subset("BipotentialMale",negate=F) )
+#lengths(peak_e105_atac_XY<-GRangesList(lapply(peak_e105_atac_XY_files,broadPeakToGRanges)))
+#length(peak_e105_atac_XY<-reduce(unlist(peak_e105_atac_XY)))
+#length(peak_e105_atac_XY<-peak_e105_atac_XY[!peak_e105_atac_XY %over% el_mm10])
+
+#(peak_e135_atac_XX_files <- list.files("../data","broadPeak$",full.names=T) %>% 
+#    str_subset("futtner",negate=F) %>% 
+#    str_subset("Granulosa",negate=F) )
+#lengths(peak_e135_atac_XX<-GRangesList(lapply(peak_e135_atac_XX_files,broadPeakToGRanges)))
+#length(peak_e135_atac_XX<-reduce(unlist(peak_e135_atac_XX)))
+#length(peak_e135_atac_XX<-peak_e135_atac_XX[!peak_e135_atac_XX %over% el_mm10])
+#
+#(peak_e135_atac_XY_files <- list.files("../data","broadPeak$",full.names=T) %>% 
+#    str_subset("futtner",negate=F) %>% 
+#    str_subset("Sertoli",negate=F) )
+#lengths(peak_e135_atac_XY<-GRangesList(lapply(peak_e135_atac_XY_files,broadPeakToGRanges)))
+#length(peak_e135_atac_XY<-reduce(unlist(peak_e135_atac_XY)))
+#length(peak_e135_atac_XY<-peak_e135_atac_XY[!peak_e135_atac_XY %over% el_mm10])
 
 
 #Figure 0b - Futtner ATAC-seq
-length(peak_e105_atac_XX_dm19 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM19_E105_broad_nomodel_041919_peaks.broadPeak"))
-length(peak_e105_atac_XX_dm24 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM24_E105_broad_nomodel_041919_peaks.broadPeak"))
-length(peak_e105_atac_XY_dm21 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM21_E105_broad_nomodel_041919_peaks.broadPeak"))
-length(peak_e105_atac_XY_dm22 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM22_E105_broad_nomodel_041919_peaks.broadPeak"))
+#length(peak_e105_atac_XX_dm19 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM19_E105_broad_nomodel_041919_peaks.broadPeak"))
+#length(peak_e105_atac_XX_dm24 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM24_E105_broad_nomodel_041919_peaks.broadPeak"))
+#length(peak_e105_atac_XY_dm21 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM21_E105_broad_nomodel_041919_peaks.broadPeak"))
+#length(peak_e105_atac_XY_dm22 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM22_E105_broad_nomodel_041919_peaks.broadPeak"))
 
-length(peak_e135_atac_XX_dm12 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM12_E135_broad_nomodel_041919_peaks.broadPeak"))
-length(peak_e135_atac_XX_dm13 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM13_E135_broad_nomodel_041919_peaks.broadPeak"))
-length(peak_e135_atac_XY_dm15 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM15_E135_broad_nomodel_041919_peaks.broadPeak"))
-length(peak_e135_atac_XY_dm16 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM16_E135_broad_nomodel_041919_peaks.broadPeak"))
+length(peak_e105_atac_XX_dm19 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM_19_E105_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_e105_atac_XX_dm24 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialFemaleDM_24_E105_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_e105_atac_XY_dm21 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM21_E105_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_e105_atac_XY_dm22 <- broadPeakToGRanges("../data/futtner_ATAC_BipotentialMale_DM22_E105_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+
+
+#length(peak_e135_atac_XX_dm12 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM12_E135_broad_nomodel_041919_peaks.broadPeak"))
+#length(peak_e135_atac_XX_dm13 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM13_E135_broad_nomodel_041919_peaks.broadPeak"))
+#length(peak_e135_atac_XY_dm15 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM15_E135_broad_nomodel_041919_peaks.broadPeak"))
+#length(peak_e135_atac_XY_dm16 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM16_E135_broad_nomodel_041919_peaks.broadPeak"))
+
+length(peak_e135_atac_XX_dm12 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM12_E135_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_e135_atac_XX_dm13 <- broadPeakToGRanges("../data/futtner_ATAC_Granulosa_DM13_E135_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_e135_atac_XY_dm15 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM15_E135_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+length(peak_e135_atac_XY_dm16 <- broadPeakToGRanges("../data/futtner_ATAC_Sertoli_DM16_E135_R1.50bp_5prime.noMT.dedup.unique.macs_peaks.broadPeak"))
+
+
+
 
 length(peak_e105_atac_XX <- reduce(c(peak_e105_atac_XX_dm19,peak_e105_atac_XX_dm24)))
 length(peak_e105_atac_XX<-peak_e105_atac_XX[peak_e105_atac_XX %over% peak_e105_atac_XX_dm19 & 
@@ -231,37 +353,27 @@ length(peak_e135_atac_XY<-peak_e135_atac_XY[peak_e135_atac_XY %over% peak_e135_a
                                                peak_e135_atac_XY %over% peak_e135_atac_XY_dm16 &
                                                !peak_e135_atac_XY %over% el_mm10])
 
-#Open regions in Granulosa Cells
-length(peak_p23_atac_XX_rep1<-broadPeakToGRanges("../data/fresh_gran_ATAC_rep1_N701_GW052319.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p23_atac_XX_rep2<-broadPeakToGRanges("../data/fresh_gran_ATAC_rep2_N702_GW052319.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p23_atac_XX_rep3<-broadPeakToGRanges("../data/fresh_gran_ATAC_rep3_N703_GW052319.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p23_atac_XX <- reduce(c(peak_p23_atac_XX_rep1,peak_p23_atac_XX_rep2,peak_p23_atac_XX_rep3)))
-length(peak_p23_atac_XX<-peak_p23_atac_XX[peak_p23_atac_XX %over% peak_p23_atac_XX_rep1& 
-                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep2 &
-                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep3 &
-                                               !peak_p23_atac_XX %over% el_mm10])
-rtracklayer::export(peak_p23_atac_XX,"peak_p23_atac_XX.bed")
 
-#Open regions in Sertoli Cells
-length(peak_p7_atac_XY_rep1<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep1_N704_GW052319.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p7_atac_XY_rep2<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep2_N705_GW052319.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p7_atac_XY_rep3<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep3_N706_GW052319.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p7_atac_XY <- reduce(c(peak_p7_atac_XY_rep1,peak_p7_atac_XY_rep2,peak_p7_atac_XY_rep3)))
-length(peak_p7_atac_XY<-peak_p7_atac_XY[peak_p7_atac_XY %over% peak_p7_atac_XY_rep1& 
-                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep2 &
-                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep3 &
-                                               !peak_p7_atac_XY %over% el_mm10])
-rtracklayer::export(peak_p7_atac_XY,"peak_p7_atac_XY.bed")
+```
 
 
-#length(peak_p23_atac_XX<-broadPeakToGRanges("../data/p23_granulosa_ATAC_P028_N704_042119_peaks.broadPeak"))
-#length(peak_p7_atac_XY<-broadPeakToGRanges("../data/p7_Sertoli_ATAC_P028_N702_042119_peaks.broadPeak"))
-
-mito_homologs<-narrowPeakToGRanges("../data/mitochondrial_homologs_peaks.narrowPeak")
-
-
+```{r load_ChIP_ATAC_peaklist,eval=T}
 #ChIP Peak lists
-length(sertoli_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.dedup.unique.macs_peaks.narrowPeak")))
+length(sertoli_dmrt1_rep1<-narrowPeakToGRanges("../data/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.dedup.unique.macs_peaks.narrowPeak"))
+length(sertoli_dmrt1_rep2<-narrowPeakToGRanges("../data/DM1.dedup.unique.macs_peaks.narrowPeak"))
+length(sertoli_dmrt1 <- reduce(c(sertoli_dmrt1_rep1,sertoli_dmrt1_rep2)))
+length(sertoli_dmrt1<-sertoli_dmrt1[sertoli_dmrt1 %over% sertoli_dmrt1_rep1 &
+                                    sertoli_dmrt1 %over% sertoli_dmrt1_rep1 &
+                                      !sertoli_dmrt1 %over% el_mm10])
+
+length(sertoli_sox9_rep1<-narrowPeakToGRanges("../data/Sox91.dedup.unique.macs_peaks.narrowPeak"))
+length(sertoli_sox9_rep2<-narrowPeakToGRanges("../data/Sox92.dedup.unique.macs_peaks.narrowPeak"))
+length(sertoli_sox9 <- reduce(c(sertoli_sox9_rep1,sertoli_sox9_rep2)))
+length(sertoli_sox9<-sertoli_sox9[sertoli_sox9 %over% sertoli_sox9_rep1 &
+                                    sertoli_sox9 %over% sertoli_sox9_rep1 &
+                                      !sertoli_sox9 %over% el_mm10])
+
+
 #length(ovary_foxl2<-narrowPeakToGRanges("../data/ovaryav574_CAGATC_042219_peaks.narrowPeak"))
 length(ovary_foxl2<-narrowPeakToGRanges("../data/foxl2ChIP_wt_ovary_070519g_peaks.narrowPeak")) 
 length(ovary_foxl2<-ovary_foxl2[!ovary_foxl2 %over% el_mm10])
@@ -288,6 +400,9 @@ length(peak_vitro_atac_cagSox9control<-peak_vitro_atac_cagSox9control[peak_vitro
                                                peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep2 &
                                                peak_vitro_atac_cagSox9control %over% peak_vitro_atac_cagSox9control_rep3 &
                                                !peak_vitro_atac_cagSox9control %over% el_mm10])
+
+
+
 rtracklayer::export(peak_vitro_atac_cagSox9control,"peak_vitro_atac_cagSox9control.bed")
 
 length(peak_vitro_atac_cagSox9_rep1<-broadPeakToGRanges("../data/gran_7d_cagSox9_CRE_ATAC_rep1_N710_GW052319_R1_001.50bp_5prime_trimmed.fq.noMT.dedup.unique.macs_peaks.broadPeak"))

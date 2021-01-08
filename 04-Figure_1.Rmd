@@ -114,11 +114,12 @@ length(vivo_atac<-reduce(c(peak_e105_atac_XX,peak_e105_atac_XY,peak_e135_atac_XX
 
 length(vivo_atac<-keepSeqlevels(vivo_atac,c(1:19,"X"),pruning.mode="coarse"))  #drop Y because not all samples have a Y
 length(vivo_atac<-suppressWarnings(vivo_atac[!vivo_atac %over% mito_homologs]))
+summary(width(vivo_atac))
+length(vivo_atac<-vivo_atac[width(vivo_atac) < 10000])
 
 head(names(vivo_atac)<-paste0("vivo_atac",formatC(1:length(vivo_atac),width=6,format="d",flag="0")))
 
 
-summary(width(vivo_atac))
 
 
 (fls.k27ac_p3_Sert <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>%
@@ -129,8 +130,8 @@ summary(width(vivo_atac))
 
 #system.time(vivo_atac_k27ac_counts<- summarizeOverlaps(vivo_atac,BamFileList(fls.k27ac_p3_Sert,yieldSize = 1e5),mode =Union, ignore.strand=T))
 #as.data.frame(apply(assays(vivo_atac_k27ac_counts)$counts,2,sum))
-#save(vivo_atac_k27ac_counts,file="vivo_atac_k27ac_counts.rdata")
-load("vivo_atac_k27ac_counts.rdata")
+#save(vivo_atac_k27ac_counts,file=paste0("vivo_atac_k27ac_counts_",ts,".rdata"))
+load("vivo_atac_k27ac_counts_Mon_Dec_28_2020_1507.rdata")
 
 
 temp<-as.data.frame(assays(vivo_atac_k27ac_counts)$counts)
@@ -172,7 +173,9 @@ upset(as.data.frame(mcols(vivo_atac)), nsets = 4, number.angles = 30, point.size
 #Find Differentially bound ATAC-able regions
 
 #(fls1.vivo <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("/N70"))
-(fls1.vivo <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("GW052319") %>% str_subset("fresh"))
+#(fls1.vivo <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("GW052319") %>% str_subset("fresh"))
+(fls1a.vivo <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("GW052319") %>% str_subset("sertoli_fresh"))
+(fls1b.vivo <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("101415|112315|102120") )
 (fls2.vivo <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("futtner"))
 #(fls3.vitro <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("ATAC") %>% str_subset("gran") %>% str_subset("P043"))
 (fls3.vitro <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>% str_subset("GW052319") %>% str_subset("cagSox9"))
@@ -182,7 +185,7 @@ upset(as.data.frame(mcols(vivo_atac)), nsets = 4, number.angles = 30, point.size
    grep("P037",.,value=T) %>% 
    grep("gran",.,value=T ))
 
-  #system.time(atac_counts<- summarizeOverlaps(vivo_atac,BamFileList(c(fls1.vivo,fls2.vivo),yieldSize = 1e5),mode =Union, ignore.strand=T))
+system.time(atac_counts_postnatal<- summarizeOverlaps(vivo_atac,BamFileList(c(fls1a.vivo,fls1b.vivo),yieldSize = 1e5,asMates = T),mode =Union, ignore.strand=T))
 #system.time(atac_counts<- summarizeOverlaps(vivo_atac,BamFileList(c(fls1.vivo,fls2.vivo,fls3.vitro,fls4.vitro),yieldSize = 1e5),mode =Union, ignore.strand=T))
 #apply(assays(atac_counts)$counts,2,sum)
 #save(atac_counts,file="atac_counts.rdata")

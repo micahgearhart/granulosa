@@ -68,7 +68,7 @@ table(symbols[symbols$gene_id %in% sertoli_up,"chr"])
 length(granulosa_up<-rownames(subset(results_soma,log2FoldChange < -2 & padj < 0.05 &  f_granulosa > 2.5)))
 table(symbols[symbols$gene_id %in% granulosa_up,"chr"])
 
-#define transcripts fore each set
+#define transcripts for each set
 sertoli_transcripts<-transcripts[transcripts$gene_id %in% sertoli_up]
 granulosa_transcripts<-transcripts[transcripts$gene_id %in% granulosa_up]
 
@@ -95,14 +95,41 @@ temp %>%
   dplyr::filter(!is.na(log2FoldChange) & !is.na(padj)) %>% 
 ggplot(aes(x=log2FoldChange,y=(-1*log10(padj)),color=results_soma)) + geom_point(size=0.7) + theme_bw() + scale_color_manual(values=c("red","darkgray","blue")) +
   annotate("text",x=df$log2FoldChange,y=(-1*log10(df$padj)),label=df$mgi_symbol)
-nodev.off()
+dev.off()
 
 
 temp<-tibble::rownames_to_column(temp,var="Ensembl_GeneID")
 temp<-temp[,c("Ensembl_GeneID","mgi_symbol","baseMean","log2FoldChange","padj","f_sertoli","f_granulosa","results_soma")]
 colnames(temp)<-c("Ensembl_GeneID","Gene Symbol","Mean Counts","Log2FoldChange","BH Padj","FPKM Sertoli","FPKM Granulosa","Sex Bias")
 head(temp)
+table(temp$`Sex Bias`)
 
+#Add overlapping genes
+length(unique(sertoli_transcripts$gene_id))
+temp_transcripts<-c(sertoli_transcripts,granulosa_transcripts)
+temp_transcripts$size<-width(temp_transcripts)
+temp_transcripts[grep("Cyp19a1",temp_transcripts$symbol)]
+temp_transcripts<-temp_transcripts[with(temp_transcripts,order(-size))]
+length(temp_transcripts_dedup<-temp_transcripts[!duplicated(temp_transcripts$gene_id)])
+temp_transcripts_dedup[grep("Cyp19a1",temp_transcripts_dedup$symbol)]
+strand(temp_transcripts_dedup)<-"*"
+
+find_overlapping_peaks<-function(gr,peaklist) {
+  hits<-list()
+  for (i in seq_along(1:length(gr))) {
+    hits[[i]]<-paste(names(peaklist[peaklist %over% (gr[i]+15000)]),collapse=";")
+  }
+  names(hits)<-gr$gene_id
+  hits<-as.data.frame(unlist(hits))
+  colnames(hits)<-"Overlapping_Peaks"
+  return(hits)
+}
+
+peaklist<-c(sertoli_dmrt1,sertoli_sox9,sert_dars,gran_dars)  #dars defined below
+x<-find_overlapping_peaks(temp_transcripts_dedup+5000,peaklist)
+
+temp$Overlapping_Peaks<-x[match(temp$Ensembl_GeneID,rownames(x)),"Overlapping_Peaks"]
+#View(temp)
 write.csv(temp,"Lindeman_et_al_Sex_Biased_Somatic_Genes.csv",row.names=F,quote=F)
 ```
 
@@ -110,7 +137,8 @@ write.csv(temp,"Lindeman_et_al_Sex_Biased_Somatic_Genes.csv",row.names=F,quote=F
 ## UpsetR comparison of ATACseq Peaklist
 ```{r vivo_ATACseq_upsetR,eval=T}
 
-length(vivo_atac<-reduce(c(peak_e105_atac_XX,peak_e105_atac_XY,peak_e135_atac_XX,peak_e135_atac_XY,peak_p23_atac_XX,peak_p7_atac_XY)))
+#length(vivo_atac<-reduce(c(peak_e105_atac_XX,peak_e105_atac_XY,peak_e135_atac_XX,peak_e135_atac_XY,peak_p23_atac_XX,peak_p7_atac_XY)))
+length(vivo_atac<-reduce(c(peak_p23_atac_XX,peak_p7_atac_XY))) #Just use postnatal data for this figure
 
 length(vivo_atac<-keepSeqlevels(vivo_atac,c(1:19,"X"),pruning.mode="coarse"))  #drop Y because not all samples have a Y
 length(vivo_atac<-suppressWarnings(vivo_atac[!vivo_atac %over% mito_homologs]))
@@ -118,8 +146,6 @@ summary(width(vivo_atac))
 length(vivo_atac<-vivo_atac[width(vivo_atac) < 10000])
 
 head(names(vivo_atac)<-paste0("vivo_atac",formatC(1:length(vivo_atac),width=6,format="d",flag="0")))
-
-
 
 
 (fls.k27ac_p3_Sert <- list.files("../data", pattern=glob2rx("*.bam$"),full=TRUE) %>%
@@ -131,7 +157,8 @@ head(names(vivo_atac)<-paste0("vivo_atac",formatC(1:length(vivo_atac),width=6,fo
 #system.time(vivo_atac_k27ac_counts<- summarizeOverlaps(vivo_atac,BamFileList(fls.k27ac_p3_Sert,yieldSize = 1e5),mode =Union, ignore.strand=T))
 #as.data.frame(apply(assays(vivo_atac_k27ac_counts)$counts,2,sum))
 #save(vivo_atac_k27ac_counts,file=paste0("vivo_atac_k27ac_counts_",ts,".rdata"))
-load("vivo_atac_k27ac_counts_Mon_Dec_28_2020_1507.rdata")
+#load("vivo_atac_k27ac_counts_Mon_Dec_28_2020_1507.rdata")
+load("vivo_atac_k27ac_counts_Fri_Jan_08_2021_1056.rdata")
 
 
 temp<-as.data.frame(assays(vivo_atac_k27ac_counts)$counts)
@@ -154,12 +181,14 @@ vivo_atac$p7_XY<-as.numeric(vivo_atac %over% peak_p7_atac_XY)
 
 colSums(as.data.frame(mcols(vivo_atac)))
 
+# Note - since vivo_atac doesn't have prenatal data in it the lists are shorter.
 upset(as.data.frame(mcols(vivo_atac)), nsets = 4, number.angles = 30, point.size = 3.5, line.size = 2,
     mainbar.y.label = "Peak Intersections", main.bar.color = "black",
     sets=c("p7_XY","p23_XX","e135_XY","e135_XX","e105_XY","e105_XX"), sets.x.label = "Numebr of Peaks", keep.order = TRUE,
     queries=list(list(query = intersects, params = list("p7_XY", "e135_XY"),color = "blue", active = T)),text.scale = c(1.3, 1.3, 1, 1, 2, 0.75),
      boxplot.summary = c("p3_XY_k27ac"))
 
+save(vivo_atac,file=paste0("vivo_atac_",ts,".rdata"))
 ```
 
 
@@ -185,35 +214,43 @@ upset(as.data.frame(mcols(vivo_atac)), nsets = 4, number.angles = 30, point.size
    grep("P037",.,value=T) %>% 
    grep("gran",.,value=T ))
 
-system.time(atac_counts_postnatal<- summarizeOverlaps(vivo_atac,BamFileList(c(fls1a.vivo,fls1b.vivo),yieldSize = 1e5,asMates = T),mode =Union, ignore.strand=T))
+#system.time(atac_counts_postnatal<- summarizeOverlaps(vivo_atac,BamFileList(c(fls1a.vivo,fls1b.vivo),yieldSize = 1e5,asMates = T),mode =Union, ignore.strand=T))
 #system.time(atac_counts<- summarizeOverlaps(vivo_atac,BamFileList(c(fls1.vivo,fls2.vivo,fls3.vitro,fls4.vitro),yieldSize = 1e5),mode =Union, ignore.strand=T))
 #apply(assays(atac_counts)$counts,2,sum)
 #save(atac_counts,file="atac_counts.rdata")
-load("atac_counts.rdata")
+#load("atac_counts.rdata")
+#load("atac_counts_postnatal_Thu_Dec_31_2020_1414.rdata")
+load("atac_counts_postnatal_2015Fri_Jan_08_2021_1201.rdata")
 
 #mcols(vivo_atac)<-assays(atac_counts)$counts
 #colnames(mcols(vivo_atac))<-colnames(assays(atac_counts)$counts) %>% gsub("\\.R1_trimmed\\.fastq\\.marked\\.bam","",.)
-atac_dds<-DESeqDataSet(atac_counts,design = ~1)
+atac_dds<-DESeqDataSet(atac_counts_postnatal_2015,design = ~1)
 mcols(atac_dds)$basepairs<-width(vivo_atac)
-colData(atac_dds)$sample<-colnames(assays(atac_counts)$counts) %>% gsub("\\.R1_trimmed\\.fastq\\.marked\\.bam","",.) %>% 
+colData(atac_dds)$sample<-colnames(assays(atac_counts_postnatal_2015)$counts) %>% gsub("\\.R1_trimmed\\.fastq\\.marked\\.bam","",.) %>% 
+  gsub("\\.noMT\\.dedup\\.unique","",.) %>% 
+  gsub("_GW052319\\.","",.) %>% 
   gsub("futtner_ATAC_","",.) %>% gsub("_R1_trimmed\\.bam","",.) %>% 
   gsub("\\.marked\\.bam","",.) %>%  gsub("\\.bam","",.) 
 
-colData(atac_dds)$sex<-factor(c(rep("Female",3),rep("Male",3),rep("Female",2),rep("Male",2),rep("Female",2),rep("Male",2),rep("Female",12)))
-colData(atac_dds)$age<-factor(c(rep("postnatal",6),rep("E105",4),rep("E135",4),rep("postnatal",12)),levels=c("E105","E135","postnatal"))
-colData(atac_dds)$cag<-factor(c(rep("na",14),rep("Sox9",3),rep("na",5),"Dmrt1","na",rep("Dmrt1",2)),levels=c("na","Sox9","Dmrt1"))
-colData(atac_dds)$source <-factor(c(rep("vivo",14),rep("vitro",12)),levels=c("vivo","vitro"))
+colData(atac_dds)$source<-"vivo"
+#colData(atac_dds)$sex<-factor(c(rep("Female",5),rep("Male",5)))
+colData(atac_dds)$sex<-factor(c(rep("Female",2),rep("Male",2)))
+colData(atac_dds)$group<-colData(atac_dds)$sex
+#colData(atac_dds)$sex<-factor(c(rep("Female",3),rep("Male",3),rep("Female",2),rep("Male",2),rep("Female",2),rep("Male",2),rep("Female",12)))
+#colData(atac_dds)$age<-factor(c(rep("postnatal",6),rep("E105",4),rep("E135",4),rep("postnatal",12)),levels=c("E105","E135","postnatal"))
+#colData(atac_dds)$cag<-factor(c(rep("na",14),rep("Sox9",3),rep("na",5),"Dmrt1","na",rep("Dmrt1",2)),levels=c("na","Sox9","Dmrt1"))
+#colData(atac_dds)$source <-factor(c(rep("vivo",14),rep("vitro",12)),levels=c("vivo","vitro"))
 
 #colData(atac_dds)$sex<-factor(c(rep("Male",2),rep("Female",4),rep("Male",2),rep("Female",2),rep("Male",2),rep("Female",12)))
 #colData(atac_dds)$age<-factor(c(rep("postnatal",4),rep("E105",4),rep("E135",4),rep("postnatal",12)),levels=c("E105","E135","postnatal"))
 #colData(atac_dds)$cag<-factor(c(rep("na",12),rep("Sox9",3),rep("na",5),"Dmrt1","na",rep("Dmrt1",2)),levels=c("na","Sox9","Dmrt1"))
 
-colData(atac_dds)$group<-factor(paste0(colData(atac_dds)$age,"_",colData(atac_dds)$sex,"_",colData(atac_dds)$source,"_",colData(atac_dds)$cag),
-                        levels=c("E105_Female_vivo_na","E105_Male_vivo_na","E135_Female_vivo_na","E135_Male_vivo_na","postnatal_Female_vivo_na","postnatal_Male_vivo_na","postnatal_Female_vitro_na","postnatal_Female_vitro_Sox9","postnatal_Female_vitro_Dmrt1"))
+#colData(atac_dds)$group<-factor(paste0(colData(atac_dds)$age,"_",colData(atac_dds)$sex,"_",colData(atac_dds)$source,"_",colData(atac_dds)$cag),
+#                        levels=c("E105_Female_vivo_na","E105_Male_vivo_na","E135_Female_vivo_na","E135_Male_vivo_na","postnatal_Female_vivo_na","postnatal_Male_vivo_na","postnatal_Female_vitro_na","postnatal_Female_vitro_Sox9","postnatal_Female_vitro_Dmrt1"))
 
 as.data.frame(colData(atac_dds))
 
-#Move to Figure 5
+#Move to Figure 5 - Also use 50bp data instead of 2x150 for figure 5
 #(df<-plotPCA(normTransform(atac_dds),intgroup=c("group"),returnData=T,ntop=500))
 #
 #plotPCA(normTransform(atac_dds),intgroup=c("group"),ntop=500) + theme_bw() +
@@ -230,7 +267,7 @@ as.data.frame(colData(vivo_dds<-atac_dds[,colData(atac_dds)$source=="vivo"]))
 as.data.frame(colData(vivo_dds))
 #table(as.character(seqnames(vivo_atac)) %in% as.character(c(1:19,"X")))
 #dim(vivo_dds<-vivo_dds[as.character(seqnames(vivo_atac)) %in% as.character(c(1:19,"X")),])
-(df<-plotPCA(normTransform(vivo_dds),intgroup=c("sex","age"),returnData=T,ntop=500))
+(df<-plotPCA(normTransform(vivo_dds),intgroup=c("sex"),returnData=T,ntop=500))
 
 #df$sample<-df$sample %>% gsub("N702","Sertoli_N702_p7",.) %>%
 #   gsub("N703","Sertoli_N703_p7",.) %>% 
@@ -238,8 +275,8 @@ as.data.frame(colData(vivo_dds))
 #   gsub("N705","Granulosa_N705_p23",.)
 
 
-plotPCA(normTransform(vivo_dds),intgroup=c("sex","age"),ntop=500) + theme_bw() +
-scale_color_manual(values = cbPalette[c(1:6)]) + geom_text(x=df$PC1,y=df$PC2,label=paste0(df$sex,"_",df$age)) 
+plotPCA(normTransform(vivo_dds),intgroup=c("sex"),ntop=500) + theme_bw() +
+scale_color_manual(values = cbPalette[c(1:6)]) + geom_text(x=df$PC1,y=df$PC2,label=paste0(df$name)) 
 
 
 
@@ -279,65 +316,81 @@ vivo_dds<-DESeq(vivo_dds)
 
 
 #e13.5
-summary(res_vivo_E135<-results(vivo_dds,contrast=c("group","E135_Male_vivo_na","E135_Female_vivo_na"),alpha=0.05))
-temp_E135<-vivo_atac
-stopifnot(all.equal(rownames(res_vivo_E135),names(temp_E135)))
-temp_E135$lfc<-round(res_vivo_E135$log2FoldChange,3)
-temp_E135$padj<-res_vivo_E135$padj
+#summary(res_vivo_E135<-results(vivo_dds,contrast=c("group","E135_Male_vivo_na","E135_Female_vivo_na"),alpha=0.05))
+#temp_E135<-vivo_atac
+#stopifnot(all.equal(rownames(res_vivo_E135),names(temp_E135)))
+#temp_E135$lfc<-round(res_vivo_E135$log2FoldChange,3)
+#temp_E135$padj<-res_vivo_E135$padj
 #are they called in the Sert or Granulosa Datasets
-table(temp_E135$sert_call <- temp_E135 %over% peak_e135_atac_XY)
-table(temp_E135$gran_call <- temp_E135 %over% peak_e135_atac_XX)
+#table(temp_E135$sert_call <- temp_E135 %over% peak_e135_atac_XY)
+#table(temp_E135$gran_call <- temp_E135 %over% peak_e135_atac_XX)
 
-table(temp_E135$class<-case_when (
-  temp_E135$sert_call & temp_E135$padj < 0.05 & temp_E135$lfc > 1 & !temp_E135$gran_call ~ "Sertoli", #3.3,1 vs 4.3,2.8
-  temp_E135$gran_call & temp_E135$padj < 0.05 & temp_E135$lfc < -1 &  !temp_E135$sert_call ~ "Granulosa", # vs 2.8,4.3
-  abs(temp_E135$lfc) < log2(1.25) & temp_E135$sert_call & temp_E135$gran_call ~ "Constitutive",
-  TRUE ~ "unclassified"
-))
+#table(temp_E135$class<-case_when (
+#  temp_E135$sert_call & temp_E135$padj < 0.05 & temp_E135$lfc > 1 & !temp_E135$gran_call ~ "Sertoli", #3.3,1 vs 4.3,2.8
+#  temp_E135$gran_call & temp_E135$padj < 0.05 & temp_E135$lfc < -1 &  !temp_E135$sert_call ~ "Granulosa", # vs 2.8,4.3
+#  abs(temp_E135$lfc) < log2(1.25) & temp_E135$sert_call & temp_E135$gran_call ~ "Constitutive",
+#  TRUE ~ "unclassified"
+#))
 
-volcano_E135<-mcols(temp_E135) %>% as.data.frame() %>% 
-  dplyr::filter(class != "unclassified") %>% 
-  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
-ggplot(aes(x=lfc,y=(-1*log10(padj)),color=class)) + geom_point(size=0.75) + theme_bw()  +ggtitle("E135")
+#volcano_E135<-mcols(temp_E135) %>% as.data.frame() %>% 
+#  dplyr::filter(class != "unclassified") %>% 
+#  dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
+#ggplot(aes(x=lfc,y=(-1*log10(padj)),color=class)) + geom_point(size=0.75) + theme_bw()  +ggtitle("E135")
   
 #postnatal
-summary(res_vivo_postnatal<-results(vivo_dds,contrast=c("group","postnatal_Male_vivo_na","postnatal_Female_vivo_na"),alpha=0.05))
+#summary(res_vivo_postnatal<-results(vivo_dds,contrast=c("group","postnatal_Male_vivo_na","postnatal_Female_vivo_na"),alpha=0.05))
+summary(res_vivo_postnatal<-results(vivo_dds,contrast=c("group","Male","Female"),alpha=0.05))
 
 stopifnot(all.equal(rownames(res_vivo_postnatal),names(vivo_atac)))
 vivo_atac$lfc<-round(res_vivo_postnatal$log2FoldChange,3)
 vivo_atac$padj<-res_vivo_postnatal$padj
+vivo_atac$score<- -1*log10(res_vivo_postnatal$padj)
+
 
 #are they called in the Sert or Granulosa Datasets
 table(vivo_atac$sert_call <- vivo_atac %over% peak_p7_atac_XY)
 table(vivo_atac$gran_call <- vivo_atac %over% peak_p23_atac_XX)
+export(vivo_atac,paste0("vivo_atac_",ts,".bed"))
+
+
 
 table(vivo_atac$class<-case_when (
-  vivo_atac$sert_call & vivo_atac$padj < 0.05 & vivo_atac$lfc > 1 & !vivo_atac$gran_call ~ "Sertoli", #3.3,1 vs 4.3,2.8
-  vivo_atac$gran_call & vivo_atac$padj < 0.05 & vivo_atac$lfc < -1 &  !vivo_atac$sert_call ~ "Granulosa", # vs 2.8,4.3
-  abs(vivo_atac$lfc) < log2(1.25) & vivo_atac$sert_call & vivo_atac$gran_call ~ "Constitutive",
+  vivo_atac$sert_call & vivo_atac$padj < 0.05 & vivo_atac$lfc > 1 & vivo_atac$Male > 2.5 ~ "Sertoli", #3.3,1 vs 4.3,2.8
+  vivo_atac$gran_call & vivo_atac$padj < 0.05 & vivo_atac$lfc < -1 &  vivo_atac$Female > 2.5 ~ "Granulosa", # vs 2.8,4.3
+  abs(vivo_atac$lfc) < log2(1.25) & vivo_atac$sert_call & vivo_atac$gran_call & vivo_atac$Male > 2.5 & vivo_atac$Female > 2.5~ "Constitutive",
   TRUE ~ "unclassified"
 ))
 
-volcano_postnatal<-mcols(vivo_atac) %>% as.data.frame() %>% 
+#Foxl2
+vivo_atac[vivo_atac %over% swl("chr9:98,953,608-98,960,126")]
+
+#Sox9
+vivo_atac[vivo_atac %over% swl("chr11:112,766,719-112,792,179")]
+
+#Esr2
+vivo_atac[vivo_atac %over% swl("chr12:76,112,358-76,137,913")]
+
+
+mcols(vivo_atac) %>% as.data.frame() %>% 
   dplyr::filter(class != "unclassified") %>% 
   dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
 ggplot(aes(x=lfc,y=(-1*log10(padj)),color=class)) + geom_point(size=0.75) + theme_bw()+ ggtitle("postnatal")
 
-grid.arrange(volcano_E135,volcano_postnatal,ncol=1)
+
 ```
 
 
 ## Add ChIP Overlap Data to vivo_atac
 
 ```{r in_vivo_DARs_ChIP_overlap,eval=T}
-
-
 head(as.data.frame(vivo_atac))
 #View(as.data.frame(vivo_atac))
 vivo_atac_subset<-vivo_atac[vivo_atac$class!="unclassified"]
 #switch to using the single nearest gene
 vivo_atac_subset<-annotate_peaks(vivo_atac_subset)  
 table(vivo_atac_subset$dimorph)
+export(vivo_atac_subset,paste0("vivo_atac_subset_",ts,".bed"))
+
 #View(as.data.frame(vivo_atac_subset[vivo_atac_subset$dimorph=="Gran;Sert"]))
 #vivo_atac_subset["vivo_atac029624"]$dimorph<-"Sert"
 #vivo_atac_subset["vivo_atac054417"]$dimorph<-"Gran"
@@ -352,21 +405,53 @@ length(vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$dim
 #View(as.data.frame(vivo_atac_subset[vivo_atac_subset$class=="Granulosa" & vivo_atac_subset$dimorph=="Gran"]))
 
 
-nr5a2_peaks<-vivo_atac[vivo_atac %over% swl("chr1:136803128-137029332")]
+nr5a2_peaks<-vivo_atac_subset[vivo_atac_subset %over% swl("chr1:136803128-137029332")]
 nr5a2_peaks[nr5a2_peaks %over% sertoli_dmrt1]
-rspo2_peaks<-vivo_atac[vivo_atac %over% swl("chr15:42,953,041-43,193,844")]
+rspo2_peaks<-vivo_atac_subset[vivo_atac_subset %over% swl("chr15:42,953,041-43,193,844")]
 rspo2_peaks[rspo2_peaks %over% sertoli_dmrt1]
-(esr2_peaks<-vivo_atac[vivo_atac %over% swl("chr12:76,130,887-76,158,648")])
+esr2_peaks<-vivo_atac_subset[vivo_atac_subset %over% swl("chr12:76,095,449-76,209,624")]
+esr2_peaks[esr2_peaks %over% sertoli_dmrt1]
 
 #phastcons
 #vivo_atac_subset<-add_mean_phastcons_score(vivo_atac_subset)
+```
 
+
+```{r in_vivo_DARs_ChIP_overlap,eval=T}
 table(vivo_atac_subset$class)
-export(vivo_atac_subset[vivo_atac_subset$class != "Constitutive"],paste0("vivo_atac_subset_",ts,".bed"))
+#export(vivo_atac_subset[vivo_atac_subset$class != "Constitutive"],paste0("vivo_atac_subset_",ts,".bed"))
+#export(vivo_atac_subset[vivo_atac_subset$class == "Granulosa"],paste0("vivo_atac_subset_granulosa_",ts,".bed"))
+#export(vivo_atac_subset[vivo_atac_subset$class == "Sertoli"],paste0("vivo_atac_subset_Sertoli_",ts,".bed"))
+
+gran_dars<-vivo_atac_subset[vivo_atac_subset$class == "Granulosa"]
+seqlevelsStyle(gran_dars)<-"UCSC"
+gran_dars<-sortSeqlevels(gran_dars)
+gran_dars<-sort(gran_dars)
+head(names(gran_dars)<-paste0("granDAR_",formatC(1:length(gran_dars),width=5,format="d",flag="0")))
+mcols(gran_dars)<-mcols(gran_dars)[,c("score","lfc","padj","Female","Male")]
+export(gran_dars,"gran_dars_peaklist.bed")
+write.csv(as.data.frame(gran_dars),"gran_dars_peaklist.csv",row.names = T,quote=F)
+seqlevelsStyle(gran_dars)<-"NCBI"
+
+sert_dars<-vivo_atac_subset[vivo_atac_subset$class == "Sertoli"]
+seqlevelsStyle(sert_dars)<-"UCSC"
+sert_dars<-sortSeqlevels(sert_dars)
+sert_dars<-sort(sert_dars)
+head(names(sert_dars)<-paste0("sertDAR_",formatC(1:length(sert_dars),width=5,format="d",flag="0")))
+mcols(sert_dars)<-mcols(sert_dars)[,c("score","lfc","padj","Female","Male")]
+export(sert_dars,"sert_dars_peaklist.bed")
+write.csv(as.data.frame(sert_dars),"sert_dars_peaklist.csv",row.names = T,quote=F)
+seqlevelsStyle(sert_dars)<-"NCBI"
+```
+
+
+```{r in_vivo_DARs_ChIP_overlap,eval=T}
+temp<-vivo_atac_subset[vivo_atac_subset$class == "Sertoli"]
+temp[temp %over% swl("chr9:98,953,608-98,960,126")]
 
 #Which ones overlap what sites?
 table(vivo_atac_subset$dmrt1<-vivo_atac_subset %over% sertoli_dmrt1)
-table(vivo_atac_subset$sox9<-vivo_atac_subset %over% testis_sox9)
+table(vivo_atac_subset$sox9<-vivo_atac_subset %over% sertoli_sox9)
 table(vivo_atac_subset$foxl2<-vivo_atac_subset %over% ovary_foxl2)
 table(vivo_atac_subset$esr2<-vivo_atac_subset %over% ovary_esr2)
 
@@ -389,6 +474,10 @@ table(vivo_atac_subset$peak<-case_when (
   TRUE ~ "unclassified"
 ))
 
+table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$peak)
+table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)
+
+
 # Look at Ovary  peak lists
 table(vivo_atac_subset$ovary_dmrt1<-vivo_atac_subset %over% ovary8w_ctvdmrt1_dmrt1)
 table(vivo_atac_subset$ovary_sox9<-vivo_atac_subset %over% ovary_ctvdmrt1_sox9)
@@ -401,6 +490,7 @@ vivo_atac_subset$ovary_peak<-case_when (
   TRUE ~ "unclassified"
 )
 table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$ovary_peak)
+length(vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$ovary_dmrt1])
 
 
 # Regions of Interest
@@ -420,9 +510,13 @@ table(vivo_atac_subset$peak)
 vivo_atac_subset[!vivo_atac_subset$peak %in% c("D","DS","S","F","FE","E"),]$peak <- "N"
 
 #Numbers for Text
+table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$dmrt1 | vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$sox9)
+mean(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$dmrt1 | vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$sox9)
 table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$peak)
 round(table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$peak)/sum(table(vivo_atac_subset[vivo_atac_subset$class=="Sertoli"]$peak)),2)
 
+table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$foxl2 | vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$esr2)
+mean(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$foxl2 | vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$esr2)
 table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)
 round(table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)/sum(table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)),2)
 
@@ -439,17 +533,41 @@ round(table(vivo_atac_subset[vivo_atac_subset$class=="Granulosa"]$peak)/sum(tabl
 length(vivo_atac_subset)
 #  chr12:75,884,786-76,384,786 chr1:136,590,477-137,092,477 chr2:148,505,257-149,005,257
 
+#Regions for Figure
+ #  chr9:98,947,927-98,961,374 chr11:112,766,547-112,790,986 chr12:76,113,848-76,138,517
+ #  chr9:98,947,412-98,967,687 chr11:112,766,547-112,790,986 chr12:76,113,848-76,138,517
+#gr<-lapply(c("chr9:9tac_subset %over% gr[[1]]][,c("Female","Male","lfc","padj","class")]
+gr<-lapply(c("chr9:98,947,412-98,967,687", "chr11:112,766,547-112,790,986", "chr12:76,113,848-76,138,517"),swl)
+vivo_atac_subset[vivo_atac_subset %over% gr[[2]]][,c("Female","Male","lfc","padj","class")]
+vivo_atac_subset[vivo_atac_subset %over% gr[[3]]][,c("Female","Male","lfc","padj","class")]
+vivo_atac_subset[vivo_atac_subset %over% gr[[1]]][,c("Female","Male","lfc","padj","class")]
+
+
+#chr13:64,054,124-64,091,964  # HSD17b3
+#chr1:136,808,754-136,984,916 # NR5A2
+#chr9:54,158,398-54,212,193  #CYP19A1
+#chr13:100,479,991-100,568,436 #OCLN
+
+#chr13:64,054,124-64,091,964   chr1:136,808,754-136,984,916  chr9:54,158,398-54,212,193   chr13:100,479,991-100,568,436 
+#chrX:53,426,127-53,450,761  chr1:136,808,754-136,984,916  chr9:54,158,398-54,212,193   chr13:100,479,991-100,568,436 w/Etd
+#chr1:136,808,754-136,984,916 chr2:148,831,959-148,841,675  chr9:54,158,398-54,212,193   chr13:100,479,991-100,568,436 w/Cst9
+
+
 #t(log2(f_atac_vivo[roi,]))
 
-svglite::svglite(paste0("somatic_atac_volcano_",ts,".svg"),width=3.5,height=3)
-mcols(vivo_atac_subset) %>% as.data.frame() %>% 
+g_volcano<-mcols(vivo_atac_subset) %>% as.data.frame() %>% 
   dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
   mutate(peak=factor(peak,levels=c("DS","D","S","FE","F","E","N"))) %>% 
 ggplot(aes(x=lfc,y=(-1*log10(padj)),color=peak)) + geom_point(size=0.75) + theme_bw()  + 
   scale_color_manual(values=c(cbPalette[c(3,6,4,2,8,7,1)])) +
   annotate("text",x=df$lfc,y=(-1*log10(df$padj)),label=df$genes)
+
+svglite::svglite(paste0("somatic_atac_volcano_",ts,".svg"),width=3.5,height=3)
+g_volcano
 dev.off()
 
+xrange<-ggplot_build(g)$layout$panel_scales_x[[1]]$range$range
+yrange<-ggplot_build(g)$layout$panel_scales_y[[1]]$range$range
 
   #optionally color by Gran vs Sert gene expression
 mcols(vivo_atac_subset) %>% as.data.frame() %>% 
@@ -462,8 +580,10 @@ ggplot(aes(x=lfc,y=(-1*log10(padj)),color=dimorph)) + geom_point() + theme_bw() 
 
 # P-values for differentially ATACable regions in Figure 1
 ```{r}
+#Cst9 - remove
 as.data.frame(vivo_atac_subset[vivo_atac_subset %over% swl("chr2:148,651,621-148,909,512") & vivo_atac_subset$class!="Constitutive"])
 
+#Esr2
 as.data.frame(vivo_atac_subset[vivo_atac_subset %over% swl("chr12:76,086,000-76,206,000") & vivo_atac_subset$class!="Constitutive"])
 ```
 
@@ -509,26 +629,33 @@ temp[temp$close_to=="both_short"]
 
 #Numbers for paper
 table(temp[temp$class=="Sertoli"]$close_to)
+round(100*table(temp[temp$class=="Sertoli"]$close_to)/as.numeric(table(vivo_atac_subset$class)["Sertoli"]),0)
 table(temp[temp$class=="Granulosa"]$close_to)
+round(100*table(temp[temp$class=="Granulosa"]$close_to)/as.numeric(table(vivo_atac_subset$class)["Granulosa"]),0)
 
 g1<- mcols(temp) %>% as.data.frame() %>% 
   dplyr::filter(close_to=="sert_short" | close_to=="gran_short") %>% 
   dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
   ggplot(aes(x=lfc,y=(-1*log10(padj)),color=close_to)) + geom_point(size=0.7) + 
-  xlim(c(-6,6)) + ylim(c(0,60)) + theme_bw()  + theme(legend.position = "None") +
-  xlab("") + ylab("") +
+  xlim(xrange) + ylim(yrange) + theme_bw()  + theme(legend.position = "None") +
+  xlab("") + ylab("") + ggtitle("short") +
   scale_color_manual(values=c("red","blue")) 
  
 g2<- mcols(temp) %>% as.data.frame() %>% 
   dplyr::filter(close_to=="sert_long" | close_to=="gran_long") %>% 
   dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
   ggplot(aes(x=lfc,y=(-1*log10(padj)),color=close_to)) + geom_point(size=0.7) +
-  xlim(c(-6,6)) + ylim(c(0,60)) + theme_bw()  + theme(legend.position = "None") +
-    xlab("") + ylab("") +
+  xlim(xrange) + ylim(yrange) + theme_bw()  + theme(legend.position = "None") +
+    xlab("") + ylab("") + ggtitle("long") +
   scale_color_manual(values=c("red","blue")) 
 
-svglite::svglite(paste0("somatic_atac_degs_",ts,".svg"),width=3,height=4)
-grid.arrange(g2,g1,ncol=1)
+svglite::svglite(paste0("somatic_atac_degs_long_",ts,".svg"),width=3,height=2.5)
+#grid.arrange(g2,g1,ncol=1)
+g2
+dev.off()
+
+svglite::svglite(paste0("somatic_atac_degs_short_",ts,".svg"),width=3,height=2.5)
+g1
 dev.off()
 
 

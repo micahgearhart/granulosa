@@ -12,12 +12,13 @@ creative_commons: CC BY
 nseq<-553 #Meme can process more than this but but changes its output format so that it won't be processed by parseMEMEOutput412
 
 length(ovary_foxl2)
-length(testis_sox9)
+length(sertoli_sox9)
 length(ovary_esr2)
 length(sertoli_dmrt1)
 
 length(ovary_esr2_top<-topify(ovary_esr2))
 length(sertoli_dmrt1_top<-topify(sertoli_dmrt1))
+
 
 ovary_foxl2.center<-GRanges(seqnames=seqnames(ovary_foxl2),IRanges(start=start(ovary_foxl2)+ovary_foxl2$summit,width=1),strand="*")+75
 ovary_foxl2.dna<-getSeq(mm10,sample(ovary_foxl2.center,nseq))
@@ -31,13 +32,13 @@ names(ovary_esr2_top.dna)<-paste0("ovary_esr2_top_",1:length(ovary_esr2_top.dna)
 export(ovary_esr2_top.dna,"ovary_esr2_top_sampled_151bp.fasta")
 length(readDNAStringSet("ovary_esr2_top_sampled_151bp.fasta"))
 
-testis_sox9.center<-GRanges(seqnames=seqnames(testis_sox9),IRanges(start=start(testis_sox9)+testis_sox9$summit,width=1),strand="*")+75
-testis_sox9.dna<-getSeq(mm10,sample(testis_sox9.center,nseq))
-names(testis_sox9.dna)<-paste0("testis_sox9_",1:length(testis_sox9.dna))
-export(testis_sox9.dna,"testis_sox9_151bp.fasta")
-length(readDNAStringSet("testis_sox9_151bp.fasta"))
+sertoli_sox9.center<-GRanges(seqnames=seqnames(sertoli_sox9),IRanges(start=sertoli_sox9$summit,width=1),strand="*")+75
+sertoli_sox9.dna<-getSeq(mm10,sample(sertoli_sox9.center,nseq))
+names(sertoli_sox9.dna)<-paste0("sertoli_sox9_",1:length(sertoli_sox9.dna))
+export(sertoli_sox9.dna,"sertoli_sox9_sampled_151bp.fasta")
+length(readDNAStringSet("sertoli_sox9_sampled_151bp.fasta"))
 
-sertoli_dmrt1_top.center<-GRanges(seqnames=seqnames(sertoli_dmrt1_top),IRanges(start=start(sertoli_dmrt1_top)+sertoli_dmrt1_top$summit,width=1),strand="*")+75
+sertoli_dmrt1_top.center<-GRanges(seqnames=seqnames(sertoli_dmrt1_top),IRanges(start=sertoli_dmrt1_top$summit,width=1),strand="*")+75
 sertoli_dmrt1_top.dna<-getSeq(mm10,sample(sertoli_dmrt1_top.center,nseq))
 names(sertoli_dmrt1_top.dna)<-paste0("sertoli_dmrt1_top_",1:length(sertoli_dmrt1_top.dna))
 export(sertoli_dmrt1_top.dna,"sertoli_dmrt1_top_sampled_151bp.fasta")
@@ -53,8 +54,8 @@ length(readDNAStringSet("sertoli_dmrt1_top_sampled_151bp.fasta"))
 ovary_foxl2.meme<-TFBSTools:::parseMEMEOutput412("ovary_foxl2_sampled_151bp.txt")
 x<-lengths(ovary_foxl2.meme_dna<-relist(getSeq(readDNAStringSet("ovary_foxl2_sampled_151bp.fasta"),unlist(ovary_foxl2.meme$motifList)),ovary_foxl2.meme$motifList))
 names(ovary_foxl2.meme_dna)<-paste0("Motif ",1:length(ovary_foxl2.meme$motifList),", p-value: ",ovary_foxl2.meme$motifEvalues," ( ",x," sites )")
-#ggplot() + geom_logo(lapply(ovary_foxl2.meme_dna,as.character),seq_type='dna') + theme_logo() +
-#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Foxl2 ChIP Peaks")
+ggplot() + geom_logo(lapply(ovary_foxl2.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Foxl2 ChIP Peaks")
 
 ovary_foxl2.pfm<-consensusMatrix(reverseComplement(ovary_foxl2.meme_dna[[1]]))
 ovary_foxl2.motif<-new("pfm",mat=t(t(ovary_foxl2.pfm[1:4,])*1/colSums(ovary_foxl2.pfm[1:4,])), name="Ovary FOXL2 Motif")
@@ -85,19 +86,19 @@ sertoli_dmrt1.motif<-new("pfm",mat=t(t(sertoli_dmrt1.pfm[1:4,])*1/colSums(sertol
 plotMotifLogoStack(DNAmotifAlignment(list(dmrt1_invitro_motif,sertoli_dmrt1.motif),revcomp=c(F,F)))
 
 #sox9
-testis_sox9.meme<-TFBSTools:::parseMEMEOutput412("testis_sox9_151bp.txt")
-x<-lengths(testis_sox9.meme_dna<-relist(getSeq(readDNAStringSet("testis_sox9_151bp.fasta"),unlist(testis_sox9.meme$motifList)),testis_sox9.meme$motifList))
-names(testis_sox9.meme_dna)<-paste0("Motif ",1:length(testis_sox9.meme$motifList),", p-value: ",testis_sox9.meme$motifEvalues," ( ",x," sites )")
-#ggplot() + geom_logo(lapply(testis_sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
-#  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 ChIP Peaks")
+sertoli_sox9.meme<-TFBSTools:::parseMEMEOutput412("sertoli_sox9_sampled_151bp.txt")
+x<-lengths(sertoli_sox9.meme_dna<-relist(getSeq(readDNAStringSet("sertoli_sox9_sampled_151bp.fasta"),unlist(sertoli_sox9.meme$motifList)),sertoli_sox9.meme$motifList))
+names(sertoli_sox9.meme_dna)<-paste0("Motif ",1:length(sertoli_sox9.meme$motifList),", p-value: ",sertoli_sox9.meme$motifEvalues," ( ",x," sites )")
+ggplot() + geom_logo(lapply(sertoli_sox9.meme_dna,as.character),seq_type='dna') + theme_logo() +
+  facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("Sox9 ChIP Peaks")
 
-testis_sox9.pfm<-consensusMatrix(reverseComplement(testis_sox9.meme_dna[[1]]))
-testis_sox9.motif<-new("pfm",mat=t(t(testis_sox9.pfm[1:4,])*1/colSums(testis_sox9.pfm[1:4,])), name="Testis Sox9 Motif")
-plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif),revcomp=c(F,F)))
+sertoli_sox9.pfm<-consensusMatrix(sertoli_sox9.meme_dna[[1]])
+sertoli_sox9.motif<-new("pfm",mat=t(t(sertoli_sox9.pfm[1:4,])*1/colSums(sertoli_sox9.pfm[1:4,])), name="Sertoli Sox9 Motif")
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,sertoli_sox9.motif),revcomp=c(F,F)))
 
 
 #show similarity of Dmrt1 and Sox9 Motifs
-plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,testis_sox9.motif,dmrt1_invitro_motif,sertoli_dmrt1.motif),revcomp=c(F,F,F,F)))
+plotMotifLogoStack(DNAmotifAlignment(list(sox9_jaspar_motif,sertoli_sox9.motif,dmrt1_invitro_motif,sertoli_dmrt1.motif),revcomp=c(F,F,F,F)))
 
 ```
 
@@ -123,14 +124,14 @@ export(sertoli_dar_Dmrt1.dna,"sertoli_dar_Dmrt1_201bp.fasta")
 # Sox9
 length(sertoli_dar_Sox9<-vivo_atac_subset[vivo_atac_subset$class=="Sertoli" & vivo_atac_subset$peak =="S"])
 sertoli_dar_Sox9<-sertoli_dar_Sox9[with(sertoli_dar_Sox9,order(padj)),]
-# sertoli_dar_Sox9$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_Sox9)-1000))
+#sertoli_dar_Sox9$top<-c(rep("top",1000),rep("not_top",length(sertoli_dar_Sox9)-1000))
 
 mcols(sertoli_dar_Sox9) %>% as.data.frame() %>% 
   dplyr::filter(!is.na(lfc) & !is.na(padj)) %>% 
 ggplot(aes(x=lfc,y=(-1*log10(padj)))) + geom_point() + theme_bw()  + 
   scale_color_manual(values=c(cbPalette[c(6,2,3,8,1,4)]))
 
-#sertoli_dar_Sox9<-peak_center(sertoli_dar_Sox9[1:1000])
+sertoli_dar_Sox9<-peak_center(sertoli_dar_Sox9)
 sertoli_dar_Sox9.dna<-getSeq(mm10,sertoli_dar_Sox9+100)
 names(sertoli_dar_Sox9.dna)<-paste0("sertoli_dar_Sox9_",1:length(sertoli_dar_Sox9.dna))
 export(sertoli_dar_Sox9.dna,"sertoli_dar_Sox9_201bp.fasta")
@@ -149,7 +150,6 @@ sertoli_dar_wo_DS<-peak_center(sertoli_dar_wo_DS[1:1000])
 sertoli_dar_wo_DS.dna<-getSeq(mm10,sertoli_dar_wo_DS+100)
 names(sertoli_dar_wo_DS.dna)<-paste0("sertoli_dar_wo_DS_",1:length(sertoli_dar_wo_DS.dna))
 export(sertoli_dar_wo_DS.dna,"sertoli_dar_wo_DS_201bp.fasta")
-
 
 ```
 
@@ -173,10 +173,10 @@ names(sertoli_dar_wo_DS.meme_dna)<-paste0("Motif ",1:length(sertoli_dar_wo_DS.me
 ggplot() + geom_logo(lapply(sertoli_dar_wo_DS.meme_dna,as.character),seq_type='dna') + theme_logo() +
   facet_wrap(~seq_group, ncol=1, scales='free_x') + ggtitle("wo Dmrt1/Sox9 binding")
 
-sertoli_dar_wo_DS.pfm<-consensusMatrix(reverseComplement(sertoli_dar_wo_DS.meme_dna[[3]]))
+sertoli_dar_wo_DS.pfm<-consensusMatrix(sertoli_dar_wo_DS.meme_dna[[3]])
 sertoli_dar_wo_DS.motif<-new("pfm",mat=t(t(sertoli_dar_wo_DS.pfm[1:4,])*1/colSums(sertoli_dar_wo_DS.pfm[1:4,])), name="sertoli_dar_wo_DS")
 
-plotMotifLogoStack(DNAmotifAlignment(list(tead2_jaspar_motif,sertoli_dar_wo_DS.motif),revcomp=c(F,F)))
+plotMotifLogoStack(DNAmotifAlignment(list(nr5a2_jaspar_motif,sertoli_dar_wo_DS.motif),revcomp=c(F,F)))
 
 ```
 
@@ -188,16 +188,16 @@ system.time(sertoli_dmrt1.sites<-mclapply(c(1:19,"X","Y"), function(x) find_site
 sapply(sertoli_dmrt1.sites,length)
 sertoli_dmrt1.sites<-sort(unlist(GRangesList(sertoli_dmrt1.sites)))
 
-system.time(testis_sox9.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=testis_sox9.pfm[1:4,],score="85%")))
-sapply(testis_sox9.sites,length)
-testis_sox9.sites<-sort(unlist(GRangesList(testis_sox9.sites)))
+system.time(sertoli_sox9.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_sox9.pfm[1:4,],score="85%")))
+sapply(sertoli_sox9.sites,length)
+sertoli_sox9.sites<-sort(unlist(GRangesList(sertoli_sox9.sites)))
 
-#Scan for TEA motif
-system.time(sertoli_dar_wo_DS.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dar_wo_DS.pfm[1:4,],score="85%")))
+#Scan for NR5A1 motif
+system.time(sertoli_dar_wo_DS.sites<-mclapply(c(1:19,"X","Y"), function(x) find_sites(x,pfm=sertoli_dar_wo_DS.pfm[1:4,],score="90%")))
 sapply(sertoli_dar_wo_DS.sites,length)
 sertoli_dar_wo_DS.sites<-sort(unlist(GRangesList(sertoli_dar_wo_DS.sites)))
 
-save(testis_sox9.sites,sertoli_dmrt1.sites,sertoli_dar_wo_DS.sites,file="genome_wide_motifs.rdata")
+save(sertoli_sox9.sites,sertoli_dmrt1.sites,sertoli_dar_wo_DS.sites,file="genome_wide_motifs.rdata")
 ```
 
 

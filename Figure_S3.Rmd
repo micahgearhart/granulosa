@@ -1,0 +1,89 @@
+---
+title: "Supplemental Figures"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+creative_commons: CC BY
+---
+
+```{r}
+
+length(sertoli_dmrt1)
+length(ovary8w_ctvdmrt1_dmrt1)
+length(gran_ctvdmrt1_dmrt1)
+
+
+interset<-function(x,y) {
+  g<-reduce(c(x,y))
+  g<-g[g %over% x & g %over% y]
+  return(g)
+}
+
+
+length(sertoli_dmrt1)
+length(ovary8w_ctvdmrt1_dmrt1)
+length(gran_ctvdmrt1_dmrt1)
+
+
+
+svglite::svglite(paste0("Supplemental_Figure_DMRT1_ChIP_Venn_",ts,".svg"),width=5,height=4.5)
+grid.newpage()
+VennDiagram::draw.triple.venn(area1=length(sertoli_dmrt1),
+                              area2=length(ovary8w_ctvdmrt1_dmrt1),
+                              area3=length(gran_ctvdmrt1_dmrt1),
+                              n12=length(interset(sertoli_dmrt1,ovary8w_ctvdmrt1_dmrt1)),
+                              n13=length(interset(sertoli_dmrt1,gran_ctvdmrt1_dmrt1)),
+                              n23=length(interset(ovary8w_ctvdmrt1_dmrt1,gran_ctvdmrt1_dmrt1)),
+                              n123=length(interset(interset(sertoli_dmrt1,ovary8w_ctvdmrt1_dmrt1),gran_ctvdmrt1_dmrt1)),
+                              fill=c(c3a,c3b,c3d),
+                              category=c("Peaks in Sertoli","Peaks in CAG-Dmrt1 XX Gonad","Peaks in CAG-DMRT1 Granulosa Cells"))
+
+dev.off()
+
+
+
+length(sertoli_sox9)
+length(ovary_ctvdmrt1_sox9)
+length(gran_ctvsox9_sox9)
+length(gran_ctvdmrt1_sox9)
+
+svglite::svglite(paste0("Supplemental_Figure_SOX9_ChIP_Venn_",ts,".svg"),width=5,height=4.5)
+grid.newpage()
+VennDiagram::draw.quad.venn(area1=length(sertoli_sox9),
+                            area2=length(ovary_ctvdmrt1_sox9),
+                            area3=length(gran_ctvsox9_sox9),
+                            area4=length(gran_ctvdmrt1_sox9),
+                            n12=length(interset(sertoli_sox9,ovary_ctvdmrt1_sox9)),
+                            n13=length(interset(sertoli_sox9,gran_ctvsox9_sox9)),
+                            n14=length(interset(sertoli_sox9,gran_ctvdmrt1_sox9)),
+                            n23=length(interset(ovary_ctvdmrt1_sox9,gran_ctvsox9_sox9)),
+                            n24=length(interset(ovary_ctvdmrt1_sox9,gran_ctvdmrt1_sox9)),
+                            n34=length(interset(gran_ctvsox9_sox9,gran_ctvdmrt1_sox9)),
+                            n123=length(interset(interset(sertoli_sox9,ovary_ctvdmrt1_sox9),gran_ctvsox9_sox9)),
+                            n124=length(interset(interset(sertoli_sox9,ovary_ctvdmrt1_sox9),gran_ctvdmrt1_sox9)),
+                            n134=length(interset(interset(sertoli_sox9,gran_ctvsox9_sox9),gran_ctvdmrt1_sox9)),
+                            n234=length(interset(interset(ovary_ctvdmrt1_sox9,gran_ctvsox9_sox9),gran_ctvdmrt1_sox9)),
+                            n1234=length(interset(interset(interset(sertoli_sox9,ovary_ctvdmrt1_sox9),gran_ctvsox9_sox9),gran_ctvdmrt1_sox9)),
+                            fill=c(c2a,c2b,c2c,c2d),
+                            category=c("Sertoli","Peaks in CAG-Dmrt1 XX Gonad","Peaks in CAG-SOX9 Granulosa Cells","Peaks in CAG-DMRT1 Granulosa Cells"))
+dev.off()
+
+```
+
+```{r}
+#chr11:112212562-112222801 chr10:80800884-80811845 chr2:25,464,709-25,472,110
+myexcel<-"../2021 Manuscript/Resubmission/Supplemental_Table_2.xlsx"
+mysheets<-readxl::excel_sheets(myexcel)
+names(mysheets)<-mysheets
+tail(g1<-readxl::read_excel(myexcel,sheet="Sertoli 3D Contacts"))
+lapply(mysheets,function(x) nrow(readxl::read_excel(myexcel,sheet=x)))
+
+dim(sox_excel<-readxl::read_excel(myexcel,sheet="Sertoli SOX9 ChIP Peaks (P7)"))
+head(sox_excel)
+write.table(sox_excel[,c("chromosome","start","end","Peak Name")],file="sox_excel.bed",quote=F,row.names=F,sep = "\t",col.names=F)
+
+dim(dmrt1_excel<-readxl::read_excel(myexcel,sheet="Sertoli DMRT1 ChIP Peaks (P7)"))
+head(dmrt1_excel)
+write.table(dmrt1_excel[,c("chromosome","start","end","Peak Name")],file="dmrt1_excel.bed",quote=F,row.names=F,sep = "\t",col.names=F)
+```
+

@@ -133,8 +133,17 @@ temp<-counts(dds[,colData(dds)$batch!="P006"]) %>% as.data.frame() %>%
 dim(temp)
 as.data.frame(colnames(temp))
 
-write.csv(tibble::rownames_to_column(temp,var="Ensembl GeneID"),"Lindeman_et_al_RNAseq_counts.csv",quote=F,row.names=F)
-getwd()
+readxl::excel_sheets("../2021 Manuscript/Supplementary_Table_1_temp.xlsx")
+sup_table1<-as.data.frame(readxl::read_excel("../2021 Manuscript/Supplementary_Table_1_temp.xlsx",sheet="RNA-Seq"))
+colnames(temp) %in% sup_table1$`Temp name (delete this column)`
+colnames(temp)<-sup_table1[match(colnames(temp),sup_table1$`Temp name (delete this column)`),"Sample Name"]
+temp$gene_name<-symbols[match(rownames(temp),symbols$gene_id),"gene_name"]
+dim(temp)
+temp<-temp[sort(rownames(temp)),c("gene_name",sup_table1$`Sample Name`)]
+temp<-rownames_to_column(temp,var="Ensembl GeneID")
+#temp<-temp[with(temp,order("Ensembl GeneID")),]
+
+write.csv(temp,"Lindeman_et_al_RNAseq_counts.csv",quote=F,row.names=F)
 
 ```
 
@@ -142,6 +151,7 @@ getwd()
 ## Motifs
 ```{r import_motifs,eval=T}
 
+#probably don't need these because I scan genome for Figure 2 #MDG
 length(dmrt1_pwm<-rtracklayer::import("../data/dmrt1_invitro_pwm_score85.bed"))
 seqlevelsStyle(dmrt1_pwm)<-"NCBI"
 length(sox9_pwm<-rtracklayer::import("sox9_pwm_score90.bed"))
@@ -188,6 +198,14 @@ colnames(esr2_pfm)<-NULL
 esr2_jaspar_motif<-new("pfm",mat=t(t(esr2_pfm[1:4,])*1/colSums(esr2_pfm[1:4,])), name="ESR2 MA0258.2")
 
 
+#download.file("http://jaspar.genereg.net/api/v1/matrix/MA0505.1.pfm",destfile = "MA0505.1.pfm")
+nr5a2_pfm<-as.matrix(read.table("MA0505.1.pfm",skip=1))
+nr5a2_pfm <- apply (nr5a2_pfm, c (1, 2), function (x) {(as.integer(x))})
+rownames(nr5a2_pfm)<-c("A","C","G","T")
+colnames(nr5a2_pfm)<-NULL
+nr5a2_jaspar_motif<-new("pfm",mat=t(t(nr5a2_pfm[1:4,])*1/colSums(nr5a2_pfm[1:4,])), name="NR5A2 MA0505.1")
+
+
 ```
 
 ## Load ChIP & ATAC Peaklists
@@ -195,83 +213,70 @@ esr2_jaspar_motif<-new("pfm",mat=t(t(esr2_pfm[1:4,])*1/colSums(esr2_pfm[1:4,])),
 #For Figure 1E
 length(ovary8w_ctvdmrt1_dmrt1<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary82_ctvdmrt1_Dmrt1_Project032_122716.fastq.macs_peaks.narrowPeak")))
 length(ovary_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/ovary8w_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.macs_peaks.narrowPeak")))
+#export(reduce(ovary8w_ctvdmrt1_dmrt1),"ovary8w_ctvdmrt1_dmrt1.bed")
+#export(reduce(ovary_ctvdmrt1_sox9),"ovary_ctvdmrt1_sox9.bed")
+length(ovary8w_ctvdmrt1_dmrt1<-keepSeqlevels(ovary8w_ctvdmrt1_dmrt1,c(1:19,"X"),pruning.mode = "coarse"))
+length(ovary_ctvdmrt1_sox9<-keepSeqlevels(ovary_ctvdmrt1_sox9,c(1:19,"X"),pruning.mode = "coarse"))
+
+
+#Export for Sup Table
+length(temp<- ovary8w_ctvdmrt1_dmrt1)
+seqlevelsStyle(temp)<-"UCSC"
+temp<-sortSeqlevels(temp)
+temp<-sort(temp)
+head(names(temp)<-paste0("cagDmrt1gonadDMRT1ChIP_",formatC(1:length(temp),width=5,format="d",flag="0")))
+mcols(temp)<-mcols(temp)[,c("score","summit")]
+export(temp,"ovary8w_ctvdmrt1_dmrt1.bed")
+write.csv(as.data.frame(temp),"ovary8w_ctvdmrt1_dmrt1_peaklist.csv",row.names = T,quote=F)
+
+#Export for Sup Table
+length(temp<- ovary_ctvdmrt1_sox9)
+seqlevelsStyle(temp)<-"UCSC"
+temp<-sortSeqlevels(temp)
+temp<-sort(temp)
+head(names(temp)<-paste0("cagDmrt1gonadSOX9ChIP_",formatC(1:length(temp),width=5,format="d",flag="0")))
+mcols(temp)<-mcols(temp)[,c("score","summit")]
+export(temp,"ovary_ctvdmrt1_sox9.bed")
+write.csv(as.data.frame(temp),"ovary_ctvdmrt1_sox9_peaklist.csv",row.names = T,quote=F)
+ 
+ 
 rmsk<-rtracklayer::import("../../R_RESOURCES/mm10_rmsk_TE.gtf")
 seqlevelsStyle(rmsk)<-"NCBI"
 rmsk<-keepSeqlevels(rmsk,value=c(1:19,"X","Y"),pruning.mode = "coarse")
 #Exclude Mitochondrial-genome like regions
 mito_homologs<-narrowPeakToGRanges("../data/mitochondrial_homologs_peaks.narrowPeak")
 
-# This code doesn't find the intersection of replicates
-#(peak_p23_atac_XX_files <- list.files("../data","gappedPeak$",full.names=T) %>% str_subset("112315",negate=F) %>% str_subset("gran"))
-#lengths(peak_p23_atac_XX<-GRangesList(lapply(peak_p23_atac_XX_files,narrowPeakToGRanges)))
-#length(peak_p23_atac_XX<-reduce(unlist(peak_p23_atac_XX)))
-#length(peak_p23_atac_XX<-peak_p23_atac_XX[!peak_p23_atac_XX %over% el_mm10])
-
-
-#(peak_p7_atac_XY_files <- list.files("../data","gappedPeak$",full.names=T) %>% str_subset("gran",negate=T) %>% str_subset("GW052319",negate=T) )
-#lengths(peak_p7_atac_XY<-GRangesList(lapply(peak_p7_atac_XY_files,narrowPeakToGRanges)))
-#length(peak_p7_atac_XY<-reduce(unlist(peak_p7_atac_XY)))
-#length(peak_p7_atac_XY<-peak_p7_atac_XY[!peak_p7_atac_XY %over% el_mm10])
-
-
-
-#Open regions in Granulosa Cells
-#length(peak_p23_atac_XX_rep1<-gappedPeakToGRanges("../data/gran-1-112315_S1.hmmr_peaks.gappedPeak"))
-#length(peak_p23_atac_XX_rep2<-gappedPeakToGRanges("../data/gran-2-112315_S1.hmmr_peaks.gappedPeak"))
-#length(peak_p23_atac_XX_rep3<-gappedPeakToGRanges("../data/gran-1-102120_S1.hmmr_peaks.gappedPeak"))
-#length(peak_p23_atac_XX_rep4<-gappedPeakToGRanges("../data/gran-2-102120_S1.hmmr_peaks.gappedPeak"))
-#length(peak_p23_atac_XX_rep5<-gappedPeakToGRanges("../data/gran-3-102120_S1.hmmr_peaks.gappedPeak"))
-
+# Open regions in granulosa Cells
 length(peak_p23_atac_XX_rep1<-broadPeakToGRanges("../data/gran-1-112315_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
 length(peak_p23_atac_XX_rep2<-broadPeakToGRanges("../data/gran-2-112315_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p23_atac_XX_rep3<-broadPeakToGRanges("../data/gran-1-102120_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p23_atac_XX_rep4<-broadPeakToGRanges("../data/gran-2-102120_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p23_atac_XX_rep5<-broadPeakToGRanges("../data/gran-3-102120_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p23_atac_XX <- reduce(c(peak_p23_atac_XX_rep1,peak_p23_atac_XX_rep2,peak_p23_atac_XX_rep3,peak_p23_atac_XX_rep4,peak_p23_atac_XX_rep5)))
+
+length(peak_p23_atac_XX <- reduce(c(peak_p23_atac_XX_rep1,peak_p23_atac_XX_rep2)))
 length(peak_p23_atac_XX<-peak_p23_atac_XX[peak_p23_atac_XX %over% peak_p23_atac_XX_rep1 & 
                                                peak_p23_atac_XX %over% peak_p23_atac_XX_rep2 &
-                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep3 &
-                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep4 &
-                                               peak_p23_atac_XX %over% peak_p23_atac_XX_rep5 &
                                                !peak_p23_atac_XX %over% el_mm10])
 
-#Open regions in Sertoli Cells
-#length(peak_p7_atac_XY_rep1<-gappedPeakToGRanges("../data/sertoli-101415_S1.hmmr_peaks.gappedPeak"))
-#length(peak_p7_atac_XY_rep2<-gappedPeakToGRanges("../data/Serolti-112315_S1.hmmr_peaks.gappedPeak"))
-#length(peak_p7_atac_XY_rep3<-gappedPeakToGRanges("../data/sertoli_fresh_ATAC_rep1_N704_GW052319.hmmr_peaks.gappedPeak"))
-#length(peak_p7_atac_XY_rep4<-gappedPeakToGRanges("../data/sertoli_fresh_ATAC_rep2_N705_GW052319.hmmr_peaks.gappedPeak"))
-#length(peak_p7_atac_XY_rep5<-gappedPeakToGRanges("../data/sertoli_fresh_ATAC_rep3_N706_GW052319.hmmr_peaks.gappedPeak"))
 
+
+
+#Open regions in Sertoli Cells
 length(peak_p7_atac_XY_rep1<-broadPeakToGRanges("../data/sertoli-101415_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
 length(peak_p7_atac_XY_rep2<-broadPeakToGRanges("../data/Serolti-112315_S1.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p7_atac_XY_rep3<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep1_N704_GW052319.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p7_atac_XY_rep4<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep2_N705_GW052319.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p7_atac_XY_rep5<-broadPeakToGRanges("../data/sertoli_fresh_ATAC_rep3_N706_GW052319.noMT.dedup.unique.macs_peaks.broadPeak"))
-length(peak_p7_atac_XY <- reduce(c(peak_p7_atac_XY_rep1,peak_p7_atac_XY_rep2,peak_p7_atac_XY_rep3,peak_p7_atac_XY_rep4,peak_p7_atac_XY_rep5)))
+
+
+length(peak_p7_atac_XY <- reduce(c(peak_p7_atac_XY_rep1,peak_p7_atac_XY_rep2)))
 length(peak_p7_atac_XY<-peak_p7_atac_XY[peak_p7_atac_XY %over% peak_p7_atac_XY_rep1 & 
                                                peak_p7_atac_XY %over% peak_p7_atac_XY_rep2 &
-                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep3 &
-                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep4 &
-                                               peak_p7_atac_XY %over% peak_p7_atac_XY_rep5 &
                                                !peak_p7_atac_XY %over% el_mm10])
 
 
 rtracklayer::export(peak_p23_atac_XX,paste0("peak_p23_atac_XX_",ts,".bed"))
-rtracklayer::export(peak_p23_atac_XX_rep1,paste0("peak_p23_atac_XX_rep1",ts,".bed"))
-rtracklayer::export(peak_p23_atac_XX_rep2,paste0("peak_p23_atac_XX_rep2",ts,".bed"))
-rtracklayer::export(peak_p23_atac_XX_rep3,paste0("peak_p23_atac_XX_rep3",ts,".bed"))
-rtracklayer::export(peak_p23_atac_XX_rep4,paste0("peak_p23_atac_XX_rep4",ts,".bed"))
-rtracklayer::export(peak_p23_atac_XX_rep5,paste0("peak_p23_atac_XX_rep5",ts,".bed"))
+#rtracklayer::export(peak_p23_atac_XX_rep1,paste0("peak_p23_atac_XX_rep1",ts,".bed"))
+#rtracklayer::export(peak_p23_atac_XX_rep2,paste0("peak_p23_atac_XX_rep2",ts,".bed"))
+
 rtracklayer::export(peak_p7_atac_XY,paste0("peak_p7_atac_XY_",ts,".bed"))
-rtracklayer::export(peak_p7_atac_XY_rep1,paste0("peak_p7_atac_XY_rep1",ts,".bed"))
-rtracklayer::export(peak_p7_atac_XY_rep2,paste0("peak_p7_atac_XY_rep2",ts,".bed"))
-rtracklayer::export(peak_p7_atac_XY_rep3,paste0("peak_p7_atac_XY_rep3",ts,".bed"))
-rtracklayer::export(peak_p7_atac_XY_rep4,paste0("peak_p7_atac_XY_rep4",ts,".bed"))
-rtracklayer::export(peak_p7_atac_XY_rep5,paste0("peak_p7_atac_XY_rep5",ts,".bed"))
+#rtracklayer::export(peak_p7_atac_XY_rep1,paste0("peak_p7_atac_XY_rep1",ts,".bed"))
+#rtracklayer::export(peak_p7_atac_XY_rep2,paste0("peak_p7_atac_XY_rep2",ts,".bed"))
 
-
-#length(peak_p23_atac_XX<-broadPeakToGRanges("../data/p23_granulosa_ATAC_P028_N704_042119_peaks.broadPeak"))
-#length(peak_p7_atac_XY<-broadPeakToGRanges("../data/p7_Sertoli_ATAC_P028_N702_042119_peaks.broadPeak"))
 
 
 ```
@@ -359,35 +364,169 @@ length(peak_e135_atac_XY<-peak_e135_atac_XY[peak_e135_atac_XY %over% peak_e135_a
 
 ```{r load_ChIP_ATAC_peaklist,eval=T}
 #ChIP Peak lists
-length(sertoli_dmrt1_rep1<-narrowPeakToGRanges("../data/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.dedup.unique.macs_peaks.narrowPeak"))
-length(sertoli_dmrt1_rep2<-narrowPeakToGRanges("../data/DM1.dedup.unique.macs_peaks.narrowPeak"))
-length(sertoli_dmrt1 <- reduce(c(sertoli_dmrt1_rep1,sertoli_dmrt1_rep2)))
-length(sertoli_dmrt1<-sertoli_dmrt1[sertoli_dmrt1 %over% sertoli_dmrt1_rep1 &
-                                    sertoli_dmrt1 %over% sertoli_dmrt1_rep1 &
+
+#DMRT1
+length(sertoli_dmrt1_rep1<-narrowPeakToGRanges("../data/covaris_6c_sertoli_dmrt1ChIP.R1.fastq.dedup.unique.macs_peaks.narrowPeak",name="rep1"))
+export(sertoli_dmrt1_rep1,"sertoli_dmrt1_rep1.bed")
+length(sertoli_dmrt1_rep2<-narrowPeakToGRanges("../data/DM1.dedup.unique.macs_peaks.narrowPeak",name="rep2"))
+export(sertoli_dmrt1_rep2,"sertoli_dmrt1_rep2.bed")
+
+length(sertoli_dmrt1_cat <- sort(c(sertoli_dmrt1_rep1,sertoli_dmrt1_rep2)))
+length(sertoli_dmrt1<-reduce(sertoli_dmrt1_cat,with.revmap=T))
+sertoli_dmrt1_revmap<-sertoli_dmrt1$revmap
+x<-relist(mcols(sertoli_dmrt1_cat)[unlist(sertoli_dmrt1_revmap), ], sertoli_dmrt1_revmap)
+sertoli_dmrt1$score<-unlist(lapply(x,function(a) round(mean(a$score),1)))
+sertoli_dmrt1$summit<-unlist(lapply(x,function(a) round(mean(a$summit),0)))
+
+length(sertoli_dmrt1_discard <-sertoli_dmrt1[sertoli_dmrt1 %over% el_mm10])
+
+length(sertoli_dmrt1_non_reproducible <-sertoli_dmrt1[!(sertoli_dmrt1 %over% sertoli_dmrt1_rep1 &
+                                       sertoli_dmrt1 %over% sertoli_dmrt1_rep2) &
                                       !sertoli_dmrt1 %over% el_mm10])
 
-length(sertoli_sox9_rep1<-narrowPeakToGRanges("../data/Sox91.dedup.unique.macs_peaks.narrowPeak"))
-length(sertoli_sox9_rep2<-narrowPeakToGRanges("../data/Sox92.dedup.unique.macs_peaks.narrowPeak"))
-length(sertoli_sox9 <- reduce(c(sertoli_sox9_rep1,sertoli_sox9_rep2)))
-length(sertoli_sox9<-sertoli_sox9[sertoli_sox9 %over% sertoli_sox9_rep1 &
-                                    sertoli_sox9 %over% sertoli_sox9_rep1 &
+length(sertoli_dmrt1<-sertoli_dmrt1[sertoli_dmrt1 %over% sertoli_dmrt1_rep1 &
+                                    sertoli_dmrt1 %over% sertoli_dmrt1_rep2 &
+                                      !sertoli_dmrt1 %over% el_mm10])
+seqlevelsStyle(sertoli_dmrt1)<-"UCSC"
+sertoli_dmrt1<-sortSeqlevels(sertoli_dmrt1)
+sertoli_dmrt1<-sort(sertoli_dmrt1)
+head(names(sertoli_dmrt1)<-paste0("sertDMRT1_",formatC(1:length(sertoli_dmrt1),width=5,format="d",flag="0")))
+sertoli_dmrt1$detected<-"1 and 2"
+mcols(sertoli_dmrt1)<-mcols(sertoli_dmrt1)[,c("score","summit","detected")]
+#export(sertoli_dmrt1,"sertoli_dmrt1_peaklist.bed")
+write.csv(as.data.frame(sertoli_dmrt1),"sertoli_dmrt1_peaklist.csv",row.names = T,quote=F)
+seqlevelsStyle(sertoli_dmrt1)<-"NCBI"
+
+table(sertoli_dmrt1_non_reproducible$detected<-case_when(
+  sertoli_dmrt1_non_reproducible %over% sertoli_dmrt1_rep1 & sertoli_dmrt1_non_reproducible %over% sertoli_dmrt1_rep2 ~ "repo",
+  sertoli_dmrt1_non_reproducible %over% sertoli_dmrt1_rep1  ~ "1",
+  sertoli_dmrt1_non_reproducible %over% sertoli_dmrt1_rep2 ~ "2",
+  !sertoli_dmrt1_non_reproducible %over% sertoli_dmrt1_rep1 & !sertoli_dmrt1_non_reproducible %over% sertoli_dmrt1_rep2 ~ "huh?",
+  ))
+
+seqlevelsStyle(sertoli_dmrt1_non_reproducible)<-"UCSC"
+sertoli_dmrt1_non_reproducible<-sortSeqlevels(sertoli_dmrt1_non_reproducible)
+sertoli_dmrt1_non_reproducible<-sort(sertoli_dmrt1_non_reproducible)
+head(names(sertoli_dmrt1_non_reproducible)<-paste0("sertdmrt1_",formatC((length(sertoli_dmrt1)+1):(length(sertoli_dmrt1)+length(sertoli_dmrt1_non_reproducible)),width=5,format="d",flag="0")))
+mcols(sertoli_dmrt1_non_reproducible)<-mcols(sertoli_dmrt1_non_reproducible)[,c("score","summit","detected")]
+write.csv(as.data.frame(sertoli_dmrt1_non_reproducible),"sertoli_dmrt1_peaklist_non_reproducible.csv",row.names = T,quote=F)
+
+
+#SOX9
+length(sertoli_sox9_rep1<-narrowPeakToGRanges("../data/Sox91.dedup.unique.macs_peaks.narrowPeak",name="rep1"))
+export(sertoli_sox9_rep1,"sertoli_sox9_rep1.bed")
+length(sertoli_sox9_rep2<-narrowPeakToGRanges("../data/Sox92.dedup.unique.macs_peaks.narrowPeak",name="rep2"))
+export(sertoli_sox9_rep2,"sertoli_sox9_rep2.bed")
+
+length(sertoli_sox9_cat <- sort(c(sertoli_sox9_rep1,sertoli_sox9_rep2)))
+length(sertoli_sox9<-reduce(sertoli_sox9_cat,with.revmap=T))
+sertoli_sox9_revmap<-sertoli_sox9$revmap
+x<-relist(mcols(sertoli_sox9_cat)[unlist(sertoli_sox9_revmap), ], sertoli_sox9_revmap)
+sertoli_sox9$score<-unlist(lapply(x,function(a) round(mean(a$score),1)))
+sertoli_sox9$summit<-unlist(lapply(x,function(a) round(mean(a$summit),0)))
+
+length(sertoli_sox9_discard <-sertoli_sox9[sertoli_sox9 %over% el_mm10])
+
+length(sertoli_sox9_non_reproducible <-sertoli_sox9[!(sertoli_sox9 %over% sertoli_sox9_rep1 &
+                                       sertoli_sox9 %over% sertoli_sox9_rep2) &
                                       !sertoli_sox9 %over% el_mm10])
 
+length(sertoli_sox9<-sertoli_sox9[sertoli_sox9 %over% sertoli_sox9_rep1 &
+                                    sertoli_sox9 %over% sertoli_sox9_rep2 &
+                                      !sertoli_sox9 %over% el_mm10])
+seqlevelsStyle(sertoli_sox9)<-"UCSC"
+sertoli_sox9<-sortSeqlevels(sertoli_sox9)
+sertoli_sox9<-sort(sertoli_sox9)
+head(names(sertoli_sox9)<-paste0("sertSOX9_",formatC(1:length(sertoli_sox9),width=5,format="d",flag="0")))
+sertoli_sox9$detected<-"1 and 2"
+mcols(sertoli_sox9)<-mcols(sertoli_sox9)[,c("score","summit","detected")]
 
+#export(sertoli_sox9,"sertoli_sox9_peaklist.bed")
+write.csv(as.data.frame(sertoli_sox9),"sertoli_sox9_peaklist.csv",row.names = T,quote=F)
+seqlevelsStyle(sertoli_sox9)<-"NCBI"
+
+table(sertoli_sox9_non_reproducible$detected<-case_when(
+  sertoli_sox9_non_reproducible %over% sertoli_sox9_rep1 & sertoli_sox9_non_reproducible %over% sertoli_sox9_rep2 ~ "repo",
+  sertoli_sox9_non_reproducible %over% sertoli_sox9_rep1  ~ "1",
+  sertoli_sox9_non_reproducible %over% sertoli_sox9_rep2 ~ "2",
+  !sertoli_sox9_non_reproducible %over% sertoli_sox9_rep1 & !sertoli_sox9_non_reproducible %over% sertoli_sox9_rep2 ~ "huh?",
+  ))
+
+seqlevelsStyle(sertoli_sox9_non_reproducible)<-"UCSC"
+sertoli_sox9_non_reproducible<-sortSeqlevels(sertoli_sox9_non_reproducible)
+sertoli_sox9_non_reproducible<-sort(sertoli_sox9_non_reproducible)
+head(names(sertoli_sox9_non_reproducible)<-paste0("sertSOX9_",formatC((length(sertoli_sox9)+1):(length(sertoli_sox9)+length(sertoli_sox9_non_reproducible)),width=5,format="d",flag="0")))
+mcols(sertoli_sox9_non_reproducible)<-mcols(sertoli_sox9_non_reproducible)[,c("score","summit","detected")]
+write.csv(as.data.frame(sertoli_sox9_non_reproducible),"sertoli_sox9_peaklist_non_reproducible.csv",row.names = T,quote=F)
+
+
+#FOXL2
 #length(ovary_foxl2<-narrowPeakToGRanges("../data/ovaryav574_CAGATC_042219_peaks.narrowPeak"))
 length(ovary_foxl2<-narrowPeakToGRanges("../data/foxl2ChIP_wt_ovary_070519g_peaks.narrowPeak")) 
 length(ovary_foxl2<-ovary_foxl2[!ovary_foxl2 %over% el_mm10])
+length(ovary_foxl2<-keepSeqlevels(ovary_foxl2,c(1:19,"X"),pruning.mode="coarse"))
+
+seqlevelsStyle(ovary_foxl2)<-"UCSC"
+ovary_foxl2<-sortSeqlevels(ovary_foxl2)
+ovary_foxl2<-sort(ovary_foxl2)
+head(names(ovary_foxl2)<-paste0("ovaryFOXL2_",formatC(1:length(ovary_foxl2),width=5,format="d",flag="0")))
+mcols(ovary_foxl2)<-mcols(ovary_foxl2)[,c("score","summit")]
+export(ovary_foxl2,"ovary_foxl2_peaklist.bed")
+write.csv(as.data.frame(ovary_foxl2),"ovary_foxl2_peaklist.csv",row.names = T,quote=F)
+seqlevelsStyle(ovary_foxl2)<-"NCBI"
+
+
+
+#ESR2
 length(ovary_esr2<-narrowPeakToGRanges("../data/ESR22_GCCAAT_042319_peaks.narrowPeak"))
 length(ovary_esr2<-ovary_esr2[!ovary_esr2 %over% el_mm10])
-#length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_Index12_DSG_PFA_062315_TACAAG.dedup.unique.macs_peaks.narrowPeak")))
-length(testis_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_testis_idx512.dedup.unique.noMT.macs_peaks.narrowPeak")))
+length(ovary_esr2<-keepSeqlevels(ovary_esr2,c(1:19,"X"),pruning.mode="coarse"))
 
-# In Vitro ATAC-Seq (Figure 5D)
-#length(vitro_atac_control2<-broadPeakToGRanges("../data/control2.macs_peaks.broadPeak"))
-#length(vitro_atac_sox9<-broadPeakToGRanges("../data/sox9.macs_peaks.broadPeak"))
-#length(vitro_atac_sox9_reduce<-reduce(c(vitro_atac_control2,vitro_atac_sox9)))
+seqlevelsStyle(ovary_esr2)<-"UCSC"
+ovary_esr2<-sortSeqlevels(ovary_esr2)
+ovary_esr2<-sort(ovary_esr2)
+head(names(ovary_esr2)<-paste0("ovaryESR2_",formatC(1:length(ovary_esr2),width=5,format="d",flag="0")))
+mcols(ovary_esr2)<-mcols(ovary_esr2)[,c("score","summit")]
+export(ovary_esr2,"ovary_esr2_peaklist.bed")
+write.csv(as.data.frame(ovary_esr2),"ovary_esr2_peaklist.csv",row.names = T,quote=F)
+
 ```
 
+# Load in Called Dots
+```{r}
+nrow(sert_dots<-read.table("../HiC/sert.bedpe"))
+colnames(sert_dots)<-c("chrom1","start1","end1","chrom2","start2","end2",
+                        "cstart1","cstart2","c_label","c_size","count","la_exp.donut.value","la_exp.vertical.value",
+                        "la_exp.horizontal.value","la_exp.lowleft.value","la_exp.donut.qval","la_exp.vertical.qval",
+                        "la_exp.horizontal.qval","la_exp.lowleft.qval")
+head(rownames(sert_dots)<-paste0("sertdots_",formatC(1:nrow(sert_dots),width=5,format="d",flag="0")))
+#sert_dots_anchor1<-GRanges(seqnames=sert_dots$chrom1,IRanges(start=sert_dots$start1,end=sert_dots$end1))
+#names(sert_dots_anchor1)<-rownames(sert_dots)
+#head(sert_dots_anchor1)
+#sert_dots_anchor2<-GRanges(seqnames=sert_dots$chrom2,IRanges(start=sert_dots$start2,end=sert_dots$end2))
+#names(sert_dots_anchor2)<-rownames(sert_dots)
+#head(sert_dots_anchor2)
+write.csv(rownames_to_column(as.data.frame(sert_dots),var="Contact Name"),"sert_dots.csv",row.names = F,quote=F)
+
+#View(sert_dots)
+
+nrow(gran_dots<-read.table("../HiC/gran.bedpe"))
+colnames(gran_dots)<-c("chrom1","start1","end1","chrom2","start2","end2",
+                        "cstart1","cstart2","c_label","c_size","count","la_exp.donut.value","la_exp.vertical.value",
+                        "la_exp.horizontal.value","la_exp.lowleft.value","la_exp.donut.qval","la_exp.vertical.qval",
+                        "la_exp.horizontal.qval","la_exp.lowleft.qval")
+head(rownames(gran_dots)<-paste0("grandots_",formatC(1:nrow(gran_dots),width=5,format="d",flag="0")))
+#sert_dots_anchor1<-GRanges(seqnames=sert_dots$chrom1,IRanges(start=sert_dots$start1,end=sert_dots$end1))
+#names(sert_dots_anchor1)<-rownames(sert_dots)
+#head(sert_dots_anchor1)
+#sert_dots_anchor2<-GRanges(seqnames=sert_dots$chrom2,IRanges(start=sert_dots$start2,end=sert_dots$end2))
+#names(sert_dots_anchor2)<-rownames(sert_dots)
+#head(sert_dots_anchor2)
+write.csv(rownames_to_column(as.data.frame(gran_dots),var="Contact Name"),"gran_dots.csv",row.names = F,quote=F)
+
+nrow(sert_dots)
+nrow(gran_dots)
+```
 
 ## Load In Vitro data
 ```{r load_invitro_data,eval=T}
@@ -443,5 +582,42 @@ rtracklayer::export(peak_vitro_atac_cagDmrt1,"peak_vitro_atac_cagDmrt1.bed")
  length(gran_ctvdmrt1_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/granulosa_ctvdmrt1_Sox9_Project032_122716.fastq.dedup.unique.macs_peaks.narrowPeak")))
 #length(gran_control_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/granulosa_control_Sox9_Project032_122716.fastq.macs_peaks.narrowPeak"))) # no sox9
   length(gran_ctvsox9_sox9<-narrowPeakToGRanges(url("https://s3.msi.umn.edu/zarkowe0/sox9_chip_from_sox9_expressing_granulsa_cells_idx9_Project033_041317.fastq.dedup.unique.macs_peaks.narrowPeak")))
+
+length(gran_ctvdmrt1_dmrt1<-keepSeqlevels(gran_ctvdmrt1_dmrt1,c(1:19,"X"),pruning.mode = "coarse"))
+length(gran_ctvdmrt1_sox9<-keepSeqlevels(gran_ctvdmrt1_sox9,c(1:19,"X"),pruning.mode = "coarse"))
+length(gran_ctvsox9_sox9<-keepSeqlevels(gran_ctvsox9_sox9,c(1:19,"X"),pruning.mode = "coarse"))
+  
+# export(reduce(gran_ctvdmrt1_dmrt1),"gran_ctvdmrt1_dmrt1.bed")
+#  export(reduce(gran_ctvdmrt1_sox9),"gran_ctvdmrt1_sox9.bed")
+#  export(reduce(gran_ctvsox9_sox9),"gran_ctvsox9_sox9.bed")
+  
+  
+length(temp<- gran_ctvdmrt1_dmrt1)
+seqlevelsStyle(temp)<-"UCSC"
+temp<-sortSeqlevels(temp)
+temp<-sort(temp)
+head(names(temp)<-paste0("cagDmrt1granulosaDMRT1ChIP_",formatC(1:length(temp),width=5,format="d",flag="0")))
+mcols(temp)<-mcols(temp)[,c("score","summit")]
+export(temp,"gran_ctvdmrt1_dmrt1_peaklist.bed")
+write.csv(as.data.frame(temp),"gran_ctvdmrt1_dmrt1_peaklist.csv",row.names = T,quote=F)
+
+length(temp<- gran_ctvdmrt1_sox9)
+seqlevelsStyle(temp)<-"UCSC"
+temp<-sortSeqlevels(temp)
+temp<-sort(temp)
+head(names(temp)<-paste0("cagDmrt1granulosaSOX9ChIP_",formatC(1:length(temp),width=5,format="d",flag="0")))
+mcols(temp)<-mcols(temp)[,c("score","summit")]
+export(temp,"gran_ctvdmrt1_sox9_peaklist.bed")
+write.csv(as.data.frame(temp),"gran_ctvdmrt1_sox9_peaklist.csv",row.names = T,quote=F)
+
+length(temp<- gran_ctvsox9_sox9)
+seqlevelsStyle(temp)<-"UCSC"
+temp<-sortSeqlevels(temp)
+temp<-sort(temp)
+head(names(temp)<-paste0("cagSox9granulosaSOX9ChIP_",formatC(1:length(temp),width=5,format="d",flag="0")))
+mcols(temp)<-mcols(temp)[,c("score","summit")]
+export(temp,"gran_ctvsox9_sox9_peaklist.bed")
+write.csv(as.data.frame(temp),"gran_ctvsox9_sox9_peaklist.csv",row.names = T,quote=F)
+
 ```
 

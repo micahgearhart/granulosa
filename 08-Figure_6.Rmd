@@ -24,6 +24,7 @@ svglite::svglite(paste0("vitro_Plppr4_expression_",ts,".svg"),width=5,height=3)
 gg_plotCounts("Plppr4",d=dds_invitro,fpkm=T,bar=T)
 dev.off()
 
+
 ```
 
 
@@ -119,6 +120,8 @@ res_7d_full_dmrt1$chr<-symbols[match(rownames(res_7d_full_dmrt1),symbols$gene_id
 summary(res_7d_full_sox9<-results(dds_7d, contrast=c("gene","sox9","control"),alpha=0.05))
 res_7d_full_sox9$symbol<-symbols[match(rownames(res_7d_full_sox9),symbols$gene_id),]$gene_name
 res_7d_full_sox9$chr<-symbols[match(rownames(res_7d_full_sox9),symbols$gene_id),]$chr
+
+
 ```
 
 # Figure 6C -GSEA
@@ -132,15 +135,83 @@ sink("somatic_gene_list.gmt")
 writeLines(unlist(lapply(nm, paste, collapse="\t")))
 sink()
 
-temp<-as.data.frame(subset(res_7d_full_dmrt1,baseMean > 200 & padj < 0.05) )
+dim(temp<-as.data.frame(subset(res_7d_full_dmrt1,baseMean > 0 & padj < 0.05) ))
 temp$ensembl<-rownames(temp)
 temp<-temp[!is.na(temp$stat),]
-write.table(temp[,c("ensembl","stat")],file="res_7d_full_dmrt1.rnk",sep="\t",quote=F,col.names=F,row.names = F)
+dim(temp)
+#write.table(temp[,c("ensembl","stat")],file="res_7d_full_dmrt1.rnk",sep="\t",quote=F,col.names=F,row.names = F)
 
-temp<-as.data.frame(subset(res_7d_full_sox9,baseMean > 200 & padj < 0.05) )
+#x<-read.table("dmrt1.GseaPreranked.1580504038711/ranked_gene_list_na_pos_versus_na_neg_1580504038711.xls",header=T)
+#xnot<-rownames(temp)[!rownames(temp) %in% x$NAME]
+#length(xnot<-x$NAME[!x$NAME %in% rownames(temp)])
+#View(as.data.frame(res_7d_full_dmrt1[xnot,]))
+
+table(temp$class<-case_when(
+temp$ensembl %in% sertoli_up ~ "Sertoli-biased Gene",
+temp$ensembl %in% granulosa_up ~ "Granulosa-biased Gene",
+TRUE ~ " "))
+
+
+temp3<-left_join(rownames_to_column(temp,var="Ensembl GeneID"),f_invitro_mean_symbol) %>% 
+  arrange(stat) %>% 
+  dplyr::filter(`Control 6 DPTx` > 2.5 | `CAG-Dmrt1 6 DPTx` > 2.5) %>%
+  dplyr::rename( "Gene Symbol" = "symbol",
+                 "Mean Counts" = "baseMean",
+                 "Log2FoldChange" = "log2FoldChange",
+                 "BH padj" = "padj",
+                 "t statistic" = "stat",
+                 "Sex Bias" = "class",
+                 "FPKM Control 0 DPTx" = "Control 0 DPTx",
+                 "FPKM Control 1 DPTx" = "Control 1 DPTx",
+                 "FPKM Control 2 DPTx" = "Control 2 DPTx",
+                 "FPKM Control 6 DPTx" = "Control 6 DPTx",
+                "FPKM CAG-Dmrt1 0 DPTx" = "CAG-Dmrt1 0 DPTx",
+                "FPKM CAG-Dmrt1 1 DPTx" = "CAG-Dmrt1 1 DPTx",
+                "FPKM CAG-Dmrt1 2 DPTx" = "CAG-Dmrt1 2 DPTx",
+                "FPKM CAG-Dmrt1 6 DPTx" = "CAG-Dmrt1 6 DPTx") %>%
+  dplyr::select("Ensembl GeneID","Gene Symbol","Mean Counts","Log2FoldChange","BH padj","t statistic","Sex Bias",
+                 "FPKM Control 0 DPTx", "FPKM Control 1 DPTx", "FPKM Control 2 DPTx", "FPKM Control 6 DPTx",
+                "FPKM CAG-Dmrt1 0 DPTx", "FPKM CAG-Dmrt1 1 DPTx", "FPKM CAG-Dmrt1 2 DPTx", "FPKM CAG-Dmrt1 6 DPTx")
+dim(temp3)
+write.csv(temp3,"Lindeman_et_al_CagDmrt1_cultured_granulosa.csv",row.names=F,quote=F)
+write.table(temp3[,c("Ensembl GeneID","t statistic")],file=paste0("res_7d_full_cagdmrt1_",ts,".rnk"),sep="\t",quote=F,col.names=F,row.names = F)
+
+
+
+temp<-as.data.frame(subset(res_7d_full_sox9,baseMean > 0 & padj < 0.05) )
 temp$ensembl<-rownames(temp)
 temp<-temp[!is.na(temp$stat),]
-write.table(temp[,c("ensembl","stat")],file="res_7d_full_sox9.rnk",sep="\t",quote=F,col.names=F,row.names = F)
+#write.table(temp[,c("ensembl","stat")],file="res_7d_full_sox9.rnk",sep="\t",quote=F,col.names=F,row.names = F)
+
+table(temp$class<-case_when(
+temp$ensembl %in% sertoli_up ~ "Sertoli-biased Gene",
+temp$ensembl %in% granulosa_up ~ "Granulosa-biased Gene",
+TRUE ~ " "))
+
+temp4<-left_join(rownames_to_column(temp,var="Ensembl GeneID"),f_invitro_mean_symbol) %>% 
+  arrange(stat) %>% 
+  dplyr::filter(`Control 6 DPTx` > 2.5 | `CAG-Sox9 6 DPTx` > 2.5) %>%
+  dplyr::rename( "Gene Symbol" = "symbol",
+                 "Mean Counts" = "baseMean",
+                 "Log2FoldChange" = "log2FoldChange",
+                 "BH padj" = "padj",
+                 "t statistic" = "stat",
+                  "Sex Bias" = "class",
+                 "FPKM Control 0 DPTx" = "Control 0 DPTx",
+                 "FPKM Control 1 DPTx" = "Control 1 DPTx",
+                 "FPKM Control 2 DPTx" = "Control 2 DPTx",
+                 "FPKM Control 6 DPTx" = "Control 6 DPTx",
+                "FPKM CAG-Sox9 0 DPTx" = "CAG-Sox9 0 DPTx",
+                "FPKM CAG-Sox9 1 DPTx" = "CAG-Sox9 1 DPTx",
+                "FPKM CAG-Sox9 2 DPTx" = "CAG-Sox9 2 DPTx",
+                "FPKM CAG-Sox9 6 DPTx" = "CAG-Sox9 6 DPTx") %>%
+  dplyr::select("Ensembl GeneID","Gene Symbol","Mean Counts","Log2FoldChange","BH padj","t statistic", "Sex Bias",
+                 "FPKM Control 0 DPTx", "FPKM Control 1 DPTx", "FPKM Control 2 DPTx", "FPKM Control 6 DPTx",
+                "FPKM CAG-Sox9 0 DPTx", "FPKM CAG-Sox9 1 DPTx", "FPKM CAG-Sox9 2 DPTx", "FPKM CAG-Sox9 6 DPTx")
+dim(temp4)
+write.csv(temp4,"Lindeman_et_al_CagSox9_cultured_granulosa.csv",row.names=F,quote=F)
+write.table(temp4[,c("Ensembl GeneID","t statistic")],file=paste0("res_7d_full_cagsox9_",ts,".rnk"),sep="\t",quote=F,col.names=F,row.names = F)
+
 
 ```
 
@@ -167,5 +238,27 @@ gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE)
 svglite::svglite(paste0("vitro_Plppr4_expression_wKO_",ts,".svg"),width=4.5,height=7)
 gg_plotCounts7d("Plppr4",d=dds_7dko,fpkm=TRUE,bar=T)
 dev.off()
+
+svglite::svglite(paste0("vitro_Vdr_expression_wKO_",ts,".svg"),width=4.5,height=7)
+gg_plotCounts7d("Vdr",d=dds_7dko,fpkm=TRUE,bar=T)
+dev.off()
+svglite::svglite(paste0("vitro_Syt9_expression_wKO_",ts,".svg"),width=4.5,height=7)
+gg_plotCounts7d("Syt9",d=dds_7dko,fpkm=TRUE,bar=T)
+dev.off()
+svglite::svglite(paste0("vitro_Calr4_expression_wKO_",ts,".svg"),width=4.5,height=7)
+gg_plotCounts7d("Calr4",d=dds_7dko,fpkm=TRUE,bar=T)
+dev.off()
+
+
+
+as.data.frame(colData(dds_7dko_gw<-dds[,str_detect(colData(dds)$batch,"GW" )]))
+dds_7dko_gw$gene<-droplevels(dds_7dko_gw$gene)
+design(dds_7dko_gw)<-~gene
+dds_7dko_gw<-DESeq(dds_7dko_gw)
+summary(res_dds_7dko_gw<-results(dds_7dko_gw))
+res_dds_7dko_gw<-left_join(rownames_to_column(as.data.frame(res_dds_7dko_gw),var="gene_id"),symbols)
+View(res_dds_7dko_gw)
+
+
 ```
 
